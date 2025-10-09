@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { Plus, TrendingUp, Users, Building2, Search, X, CreditCard, Users2, Building, Calendar, Wallet, Filter, Moon, Sun, LogOut } from 'lucide-react'
-import { api, type Customer, type Company, type Debt } from './api'
+import { api, type Customer, type Company } from './api'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -18,7 +18,7 @@ import CustomerProfile from './components/CustomerProfile'
 import CompanyProfile from './components/CompanyProfile'
 import ErrorBoundary from './components/ErrorBoundary'
 import Login from './components/Login'
-import ProtectedRoute from './components/ProtectedRoute'
+// import ProtectedRoute from './components/ProtectedRoute'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 function AppContent() {
@@ -395,13 +395,13 @@ function CustomersPage() {
     }
   })
 
-  const addDebt = useMutation({
-    mutationFn: (payload: Partial<Debt>) => api.post('debts/', payload),
-    onSuccess: (_r, variables) => {
-      qc.invalidateQueries({ queryKey: ['customers'] })
-      if (variables.customer) qc.invalidateQueries({ queryKey: ['customer-debts', variables.customer] })
-    },
-  })
+  // const addDebt = useMutation({
+  //   mutationFn: (payload: Partial<Debt>) => api.post('debts/', payload),
+  //   onSuccess: (_r, variables) => {
+  //     qc.invalidateQueries({ queryKey: ['customers'] })
+  //     if (variables.customer) qc.invalidateQueries({ queryKey: ['customer-debts', variables.customer] })
+  //   },
+  // })
 
   const adjustDebt = useMutation({
     mutationFn: async ({ entityId, type, amount, note, isIncrease, override }: any) => {
@@ -480,10 +480,10 @@ function CustomersPage() {
   })
 
 
-  const deleteDebt = useMutation({
-    mutationFn: (id: number) => api.delete(`debts/${id}/`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
-  })
+  // const deleteDebt = useMutation({
+  //   mutationFn: (id: number) => api.delete(`debts/${id}/`),
+  //   onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
+  // })
 
   return (
     <div className="space-y-6">
@@ -772,13 +772,13 @@ function CompaniesPage() {
     }
   })
 
-  const addDebt = useMutation({
-    mutationFn: (payload: Partial<Debt>) => api.post('debts/', payload),
-    onSuccess: (_r, variables) => {
-      qc.invalidateQueries({ queryKey: ['companies'] })
-      if (variables.company) qc.invalidateQueries({ queryKey: ['company-debts', variables.company] })
-    },
-  })
+  // const addDebt = useMutation({
+  //   mutationFn: (payload: Partial<Debt>) => api.post('debts/', payload),
+  //   onSuccess: (_r, variables) => {
+  //     qc.invalidateQueries({ queryKey: ['companies'] })
+  //     if (variables.company) qc.invalidateQueries({ queryKey: ['company-debts', variables.company] })
+  //   },
+  // })
 
   const adjustDebt = useMutation({
     mutationFn: async ({ entityId, type, amount, note, isIncrease, override }: any) => {
@@ -840,10 +840,10 @@ function CompaniesPage() {
     }
   })
 
-  const deleteDebt = useMutation({
-    mutationFn: (id: number) => api.delete(`debts/${id}/`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
-  })
+  // const deleteDebt = useMutation({
+  //   mutationFn: (id: number) => api.delete(`debts/${id}/`),
+  //   onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
+  // })
 
   const deleteCompany = useMutation({
     mutationFn: async (id: number) => api.delete(`companies/${id}/`),

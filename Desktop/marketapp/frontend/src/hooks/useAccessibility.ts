@@ -26,8 +26,8 @@ export const useAccessibility = (
     enableKeyboardNavigation = true,
     enableFocusManagement = true,
     enableScreenReader = true,
-    enableHighContrast = true,
-    enableReducedMotion = true
+    // enableHighContrast = true,
+    // enableReducedMotion = true
   } = options
 
   const keyboardListeners = useRef<Map<string, () => void>>(new Map())
@@ -134,8 +134,9 @@ export const useAccessibility = (
       }
     }
 
-    keyboardListeners.current.set(key, handleKeyPress)
-    document.addEventListener('keydown', handleKeyPress)
+    const eventListener = (e: Event) => handleKeyPress(e as KeyboardEvent)
+    document.addEventListener('keydown', eventListener as EventListener)
+    keyboardListeners.current.set(key, eventListener as any)
   }, [enableKeyboardNavigation])
 
   const removeKeyboardListener = useCallback((key: string) => {

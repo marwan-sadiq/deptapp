@@ -129,7 +129,7 @@ export const useFormValidation = (
     }
   }, [errors])
 
-  const setTouched = useCallback((field: string, isTouched: boolean) => {
+  const setFieldTouched = useCallback((field: string, isTouched: boolean) => {
     setTouched(prev => ({ ...prev, [field]: isTouched }))
     
     // Validate field when it loses focus
@@ -169,7 +169,7 @@ export const useFormValidation = (
     touched,
     isValid,
     setValue,
-    setTouched,
+    setTouched: setFieldTouched,
     validateField,
     validateForm,
     resetForm,

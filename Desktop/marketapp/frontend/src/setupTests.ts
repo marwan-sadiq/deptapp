@@ -1,26 +1,26 @@
 import '@testing-library/jest-dom'
-import { configure } from '@testing-library/react'
+// import { configure } from '@testing-library/dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React from 'react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LanguageProvider } from './contexts/LanguageContext'
-import { ReactElement } from 'react'
 
 // Configure testing library
-configure({
-  testIdAttribute: 'data-testid',
-  asyncUtilTimeout: 5000,
-})
+// configure({
+//   testIdAttribute: 'data-testid',
+//   asyncUtilTimeout: 5000,
+// })
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
+(globalThis as any).IntersectionObserver = class MockIntersectionObserver {
   constructor() {}
   disconnect() {}
   observe() {}
   unobserve() {}
-}
+} as any
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
+(globalThis as any).ResizeObserver = class ResizeObserver {
   constructor() {}
   disconnect() {}
   observe() {}
@@ -54,56 +54,54 @@ Object.defineProperty(window, 'localStorage', {
 })
 
 // Mock sessionStorage
-const sessionStorageMock = {
+const sessionStorageMock: any = {
   getItem: jest.fn(),
   setItem: jest.fn(),
   removeItem: jest.fn(),
   clear: jest.fn(),
 }
-Object.defineProperty(window, 'sessionStorage', {
-  value: sessionStorageMock
-})
+;(window as any).sessionStorage = sessionStorageMock
 
 // Mock fetch
-global.fetch = jest.fn()
+(globalThis as any).fetch = jest.fn()
 
 // Mock console methods to reduce noise in tests
-const originalError = console.error
-const originalWarn = console.warn
+// const originalError = console.error
+// const originalWarn = console.warn || (() => {})
 
-beforeAll(() => {
-  console.error = (...args: any[]) => {
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('Warning: ReactDOM.render is no longer supported')
-    ) {
-      return
-    }
-    originalError.call(console, ...args)
-  }
+// beforeAll(() => {
+//   (console as any).error = (...args: any[]) => {
+//     if (
+//       typeof args[0] === 'string' &&
+//       args[0].includes('Warning: ReactDOM.render is no longer supported')
+//     ) {
+//       return
+//     }
+//     originalError.call(console, ...args)
+//   }
   
-  console.warn = (...args: any[]) => {
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('componentWillReceiveProps')
-    ) {
-      return
-    }
-    originalWarn.call(console, ...args)
-  }
-})
+//   (console as any).warn = (...args: any[]) => {
+//     if (
+//       typeof args[0] === 'string' &&
+//       args[0].includes('componentWillReceiveProps')
+//     ) {
+//       return
+//     }
+//     originalWarn.call(console, ...args)
+//   }
+// })
 
-afterAll(() => {
-  console.error = originalError
-  console.warn = originalWarn
-})
+// afterAll(() => {
+//   (console as any).error = originalError
+//   (console as any).warn = originalWarn
+// })
 
 // Test utilities
 export const createTestQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
-      cacheTime: 0,
+      gcTime: 0,
     },
     mutations: {
       retry: false,
@@ -111,13 +109,14 @@ export const createTestQueryClient = () => new QueryClient({
   },
 })
 
-export const createTestWrapper = () => {
+export const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = createTestQueryClient()
   
-  return ({ children }: { children: React.ReactNode }) => {
-    // This would be used in actual test files
-    return null
-  }
+  return React.createElement(QueryClientProvider, { client: queryClient },
+    React.createElement(ThemeProvider, null,
+      React.createElement(LanguageProvider, null, children)
+    )
+  )
 }
 
 // Mock API responses
@@ -149,12 +148,12 @@ export const createMockCustomer = (overrides = {}) => ({
   address: 'Test Address',
   market_money: '0.000',
   total_debt: '1000.000',
-  reputation: 'good',
+  reputation: 'good' as const,
   reputation_score: 75,
-  last_payment_date: null,
+  last_payment_date: undefined,
   total_paid_30_days: '0.000',
   payment_streak_days: 0,
-  earliest_due_date: null,
+  earliest_due_date: undefined,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   ...overrides,
@@ -167,7 +166,7 @@ export const createMockCompany = (overrides = {}) => ({
   address: 'Test Address',
   market_money: '0.000',
   total_debt: '2000.000',
-  earliest_due_date: null,
+  earliest_due_date: undefined,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   ...overrides,
@@ -186,15 +185,4 @@ export const createMockDebt = (overrides = {}) => ({
   ...overrides,
 })
 
-// Custom matchers
-expect.extend({
-  toBeInTheDocument: require('@testing-library/jest-dom/matchers').toBeInTheDocument,
-  toHaveClass: require('@testing-library/jest-dom/matchers').toHaveClass,
-  toHaveTextContent: require('@testing-library/jest-dom/matchers').toHaveTextContent,
-  toBeVisible: require('@testing-library/jest-dom/matchers').toBeVisible,
-  toBeDisabled: require('@testing-library/jest-dom/matchers').toBeDisabled,
-  toBeEnabled: require('@testing-library/jest-dom/matchers').toBeEnabled,
-  toHaveValue: require('@testing-library/jest-dom/matchers').toHaveValue,
-  toHaveAttribute: require('@testing-library/jest-dom/matchers').toHaveAttribute,
-  toHaveStyle: require('@testing-library/jest-dom/matchers').toHaveStyle,
-})
+// Custom matchers are already imported via @testing-library/jest-dom

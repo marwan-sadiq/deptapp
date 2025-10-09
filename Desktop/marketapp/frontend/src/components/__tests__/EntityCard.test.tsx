@@ -1,6 +1,6 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, fireEvent } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import EntityCard from '../EntityCard'
 import { createMockCustomer, createMockCompany, createTestQueryClient } from '../../setupTests'
