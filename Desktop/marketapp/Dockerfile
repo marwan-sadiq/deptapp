@@ -12,15 +12,18 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application
+# Copy the application files
 COPY . .
 
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV DJANGO_SETTINGS_MODULE=backend.settings_production
 
+# Make start.py executable
+RUN chmod +x start.py
+
 # Expose port
 EXPOSE 8000
 
 # Run the application
-CMD ["gunicorn", "app:application", "--bind", "0.0.0.0:8000"]
+CMD ["python", "start.py"]
