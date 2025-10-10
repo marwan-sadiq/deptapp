@@ -19,11 +19,8 @@ COPY . .
 ENV PYTHONPATH=/app
 ENV DJANGO_SETTINGS_MODULE=backend.settings_production
 
-# Make start.py executable
-RUN chmod +x start.py
-
 # Expose port
 EXPOSE 8000
 
 # Run the application
-CMD ["python", "start.py"]
+CMD ["gunicorn", "backend.wsgi:application", "--bind", "0.0.0.0:8000"]
