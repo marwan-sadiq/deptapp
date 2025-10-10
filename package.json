@@ -1,0 +1,13 @@
+{
+  "name": "deptapp-backend",
+  "version": "1.0.0",
+  "description": "Debt Management System Backend",
+  "main": "manage.py",
+  "scripts": {
+    "start": "gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --settings=backend.settings_production",
+    "build": "pip install -r requirements.txt && python manage.py migrate --settings=backend.settings_production"
+  },
+  "engines": {
+    "python": "3.11"
+  }
+}
