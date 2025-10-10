@@ -111,28 +111,46 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 class CustomerSerializer(serializers.ModelSerializer):
     total_debt = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     earliest_due_date = serializers.SerializerMethodField()
+    primary_currency = serializers.SerializerMethodField()
     
     class Meta:
         model = Customer
         fields = ["id", "user", "name", "phone", "address", "created_at", "updated_at", "market_money", "total_debt", 
-                 "reputation", "reputation_score", "last_payment_date", "total_paid_30_days", "payment_streak_days", "earliest_due_date"]
+                 "reputation", "reputation_score", "last_payment_date", "total_paid_30_days", "payment_streak_days", "earliest_due_date", "primary_currency"]
         read_only_fields = ["user"]
     
     def get_earliest_due_date(self, obj):
         return obj.get_earliest_due_date()
+    
+    def get_primary_currency(self, obj):
+        """Get the most common currency among debts, or USD as default"""
+        from django.db.models import Count
+        currency_counts = obj.debts.values('currency').annotate(count=Count('currency')).order_by('-count')
+        if currency_counts.exists():
+            return currency_counts.first()['currency']
+        return 'USD'
 
 
 class CompanySerializer(serializers.ModelSerializer):
     total_debt = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     earliest_due_date = serializers.SerializerMethodField()
+    primary_currency = serializers.SerializerMethodField()
     
     class Meta:
         model = Company
-        fields = ["id", "user", "name", "phone", "address", "created_at", "updated_at", "market_money", "total_debt", "earliest_due_date"]
+        fields = ["id", "user", "name", "phone", "address", "created_at", "updated_at", "market_money", "total_debt", "earliest_due_date", "primary_currency"]
         read_only_fields = ["user"]
     
     def get_earliest_due_date(self, obj):
         return obj.get_earliest_due_date()
+    
+    def get_primary_currency(self, obj):
+        """Get the most common currency among debts, or USD as default"""
+        from django.db.models import Count
+        currency_counts = obj.debts.values('currency').annotate(count=Count('currency')).order_by('-count')
+        if currency_counts.exists():
+            return currency_counts.first()['currency']
+        return 'USD'
 
 
 class DebtSerializer(serializers.ModelSerializer):
@@ -140,7 +158,7 @@ class DebtSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Debt
-        fields = ["id", "customer", "company", "amount", "note", "is_settled", "due_date", "override", "created_at", "updated_at"]
+        fields = ["id", "customer", "company", "amount", "currency", "note", "is_settled", "due_date", "override", "created_at", "updated_at"]
     
     def validate(self, data):
         # Check credit control for new positive debt to customers (unless overridden)

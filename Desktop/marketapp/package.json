@@ -4,7 +4,7 @@
   "description": "Debt Management System Backend",
   "main": "manage.py",
   "scripts": {
-    "start": "gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --settings=backend.settings_production",
+    "start": "gunicorn backend.wsgi:application --bind 0.0.0.0:8000",
     "build": "pip install -r requirements.txt && python manage.py migrate --settings=backend.settings_production"
   },
   "engines": {

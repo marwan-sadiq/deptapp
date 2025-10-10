@@ -271,7 +271,9 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
           paidInLast30Days: 'Paid in last 30 days'
         },
         currency: {
-          iqd: 'IQD'
+          iqd: 'IQD',
+          usd: 'USD',
+          mixed: 'Mixed'
         },
       auth: {
         signIn: 'Sign In',

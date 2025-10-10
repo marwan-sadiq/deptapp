@@ -50,6 +50,13 @@ const CompanyPaymentPlanner: React.FC = () => {
   const [paidItems, setPaidItems] = useState<Set<string>>(new Set())
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
   const [itemToConfirm, setItemToConfirm] = useState<GeneratedSchedule | null>(null)
+  
+  // Error handling states
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
+  const [generateSuccess, setGenerateSuccess] = useState<string | null>(null)
+  
   const queryClient = useQueryClient()
   const { theme } = useTheme()
   const { t } = useLanguage()
@@ -136,125 +143,218 @@ const CompanyPaymentPlanner: React.FC = () => {
   console.log('availableMoney:', availableMoney)
   console.log('calculatedMaxDaily:', calculatedMaxDaily)
 
-
-  // Generate payment schedule
-  const generatePaymentSchedule = () => {
-    console.log('Generate schedule clicked')
-    console.log('startDate:', startDate)
-    console.log('endDate:', endDate)
-    console.log('companies:', companies)
+  // Validation functions
+  const validateInputs = () => {
+    const errors: {[key: string]: string} = {}
     
-    if (!startDate || !endDate) {
-      console.log('Missing required fields')
-      console.log('startDate valid:', !!startDate)
-      console.log('endDate valid:', !!endDate)
-      return
+    // Check required fields
+    if (!startDate) {
+      errors.startDate = 'Start date is required'
     }
-
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    if (!endDate) {
+      errors.endDate = 'End date is required'
+    }
     
-    // Calculate daily budget automatically based on available money and days
-    const dailyBudget = availableMoney / daysDiff
-    
-    console.log('daysDiff:', daysDiff)
-    console.log('availableMoney:', availableMoney)
-    console.log('dailyBudget (auto-calculated):', dailyBudget)
-
-    // Get companies with debt, sorted by priority
-    const companiesWithDebt = companies
-      .filter((c: Company) => parseFloat(c.total_debt || '0') > 0)
-      .map((c: Company) => {
-        const daysLeft = c.earliest_due_date 
-          ? Math.ceil((new Date(c.earliest_due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-          : 999 // No due date = low priority
-        
-        return {
-          ...c,
-          daysLeft,
-          isUrgent: daysLeft <= 7,
-          priority: daysLeft <= 0 ? 1 : daysLeft <= 7 ? 2 : daysLeft <= 30 ? 3 : 4
-        }
-      })
-      .sort((a: any, b: any) => a.priority - b.priority || parseFloat(b.total_debt) - parseFloat(a.total_debt))
-
-    console.log('companiesWithDebt:', companiesWithDebt)
-    console.log('companiesWithDebt length:', companiesWithDebt.length)
-
-    const schedule: GeneratedSchedule[] = []
-    const remainingDebts = new Map<number, number>(companiesWithDebt.map((c: any) => [c.id, parseFloat(c.total_debt)]))
-
-    // Generate schedule for each day
-    for (let i = 0; i < daysDiff; i++) {
-      const currentDate = new Date(start)
-      currentDate.setDate(start.getDate() + i)
-      const dateStr = currentDate.toISOString().split('T')[0]
+    // Check date validity
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
       
-      let dailyRemaining = dailyBudget
-
-      // Pay companies in priority order
-      for (const company of companiesWithDebt) {
-        if (dailyRemaining <= 0) break
-        
-        const remainingDebt = remainingDebts.get(company.id) || 0
-        if (remainingDebt <= 0) continue
-
-        // Calculate payment amount based on priority and remaining budget
-        let paymentAmount = 0
-        
-        // Calculate how many days are left in the month
-        const daysLeftInMonth = daysDiff - i
-        
-        if (company.priority === 1) { // Overdue - try to pay off completely
-          if (remainingDebt <= dailyRemaining) {
-            paymentAmount = remainingDebt // Pay off completely
-          } else {
-            paymentAmount = Math.min(remainingDebt, dailyRemaining * 0.8) // 80% of daily budget
-          }
-        } else if (company.priority === 2) { // Urgent (≤7 days)
-          if (remainingDebt <= dailyRemaining * 0.9) {
-            paymentAmount = remainingDebt // Pay off completely if reasonable
-          } else {
-            paymentAmount = Math.min(remainingDebt, dailyRemaining * 0.6) // 60% of daily budget
-          }
-        } else if (company.priority === 3) { // Normal (≤30 days)
-          // Distribute remaining debt over remaining days
-          const targetDailyPayment = remainingDebt / Math.max(daysLeftInMonth, 1)
-          paymentAmount = Math.min(remainingDebt, Math.max(targetDailyPayment, dailyRemaining * 0.4))
-        } else { // Low priority
-          // Distribute remaining debt over remaining days
-          const targetDailyPayment = remainingDebt / Math.max(daysLeftInMonth, 1)
-          paymentAmount = Math.min(remainingDebt, Math.max(targetDailyPayment, dailyRemaining * 0.2))
-        }
-
-        if (paymentAmount > 0) {
-          schedule.push({
-            date: dateStr,
-            companyId: company.id,
-            companyName: company.name,
-            amount: paymentAmount,
-            priority: company.priority,
-            daysLeft: company.daysLeft,
-            isUrgent: company.isUrgent
-          })
-
-          remainingDebts.set(company.id, remainingDebt - paymentAmount)
-          dailyRemaining -= paymentAmount
-        }
+      if (isNaN(start.getTime())) {
+        errors.startDate = 'Invalid start date'
+      } else if (start < today) {
+        errors.startDate = 'Start date cannot be in the past'
+      }
+      
+      if (isNaN(end.getTime())) {
+        errors.endDate = 'Invalid end date'
+      } else if (end <= start) {
+        errors.endDate = 'End date must be after start date'
       }
     }
-
-    console.log('Generated schedule:', schedule)
-    console.log('Schedule length:', schedule.length)
-    setGeneratedSchedule(schedule)
     
-    // Save schedule to localStorage for persistence
+    // Check safety margin
+    const margin = parseFloat(safetyMargin)
+    if (isNaN(margin) || margin < 0 || margin > 100) {
+      errors.safetyMargin = 'Safety margin must be between 0 and 100'
+    }
+    
+    // Check if there are companies with debt
+    const companiesWithDebt = companies.filter((c: Company) => parseFloat(c.total_debt || '0') > 0)
+    if (companiesWithDebt.length === 0) {
+      errors.companies = 'No companies with debt found'
+    }
+    
+    // Check available money
+    if (availableMoney <= 0) {
+      errors.money = 'No available money for payments after safety margin'
+    }
+    
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  // Clear errors when inputs change
+  const clearErrors = () => {
+    setGenerateError(null)
+    setValidationErrors({})
+    setGenerateSuccess(null)
+  }
+
+
+  // Generate payment schedule with error handling
+  const generatePaymentSchedule = async () => {
     try {
-      localStorage.setItem('generated-payment-schedule', JSON.stringify(schedule))
-      console.log('Schedule saved to localStorage')
+      // Clear previous errors
+      clearErrors()
+      
+      // Validate inputs
+      if (!validateInputs()) {
+        setGenerateError('Please fix the validation errors before generating schedule')
+        return
+      }
+
+      setIsGenerating(true)
+      setGenerateError(null)
+
+      console.log('Generate schedule clicked')
+      console.log('startDate:', startDate)
+      console.log('endDate:', endDate)
+      console.log('companies:', companies)
+
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+      
+      // Validate date range
+      if (daysDiff <= 0) {
+        throw new Error('Invalid date range: end date must be after start date')
+      }
+      
+      if (daysDiff > 365) {
+        throw new Error('Date range too long: maximum 365 days allowed')
+      }
+      
+      // Calculate daily budget automatically based on available money and days
+      const dailyBudget = availableMoney / daysDiff
+      
+      console.log('daysDiff:', daysDiff)
+      console.log('availableMoney:', availableMoney)
+      console.log('dailyBudget (auto-calculated):', dailyBudget)
+
+      // Get companies with debt, sorted by priority
+      const companiesWithDebt = companies
+        .filter((c: Company) => parseFloat(c.total_debt || '0') > 0)
+        .map((c: Company) => {
+          const daysLeft = c.earliest_due_date 
+            ? Math.ceil((new Date(c.earliest_due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : 999 // No due date = low priority
+          
+          return {
+            ...c,
+            daysLeft,
+            isUrgent: daysLeft <= 7,
+            priority: daysLeft <= 0 ? 1 : daysLeft <= 7 ? 2 : daysLeft <= 30 ? 3 : 4
+          }
+        })
+        .sort((a: any, b: any) => a.priority - b.priority || parseFloat(b.total_debt) - parseFloat(a.total_debt))
+
+      console.log('companiesWithDebt:', companiesWithDebt)
+      console.log('companiesWithDebt length:', companiesWithDebt.length)
+
+      if (companiesWithDebt.length === 0) {
+        throw new Error('No companies with debt found to generate schedule for')
+      }
+
+      const schedule: GeneratedSchedule[] = []
+      const remainingDebts = new Map<number, number>(companiesWithDebt.map((c: any) => [c.id, parseFloat(c.total_debt)]))
+
+      // Generate schedule for each day
+      for (let i = 0; i < daysDiff; i++) {
+        const currentDate = new Date(start)
+        currentDate.setDate(start.getDate() + i)
+        const dateStr = currentDate.toISOString().split('T')[0]
+        
+        let dailyRemaining = dailyBudget
+
+        // Pay companies in priority order
+        for (const company of companiesWithDebt) {
+          if (dailyRemaining <= 0) break
+          
+          const remainingDebt = remainingDebts.get(company.id) || 0
+          if (remainingDebt <= 0) continue
+
+          // Calculate payment amount based on priority and remaining budget
+          let paymentAmount = 0
+          
+          // Calculate how many days are left in the month
+          const daysLeftInMonth = daysDiff - i
+          
+          if (company.priority === 1) { // Overdue - try to pay off completely
+            if (remainingDebt <= dailyRemaining) {
+              paymentAmount = remainingDebt // Pay off completely
+            } else {
+              paymentAmount = Math.min(remainingDebt, dailyRemaining * 0.8) // 80% of daily budget
+            }
+          } else if (company.priority === 2) { // Urgent (≤7 days)
+            if (remainingDebt <= dailyRemaining * 0.9) {
+              paymentAmount = remainingDebt // Pay off completely if reasonable
+            } else {
+              paymentAmount = Math.min(remainingDebt, dailyRemaining * 0.6) // 60% of daily budget
+            }
+          } else if (company.priority === 3) { // Normal (≤30 days)
+            // Distribute remaining debt over remaining days
+            const targetDailyPayment = remainingDebt / Math.max(daysLeftInMonth, 1)
+            paymentAmount = Math.min(remainingDebt, Math.max(targetDailyPayment, dailyRemaining * 0.4))
+          } else { // Low priority
+            // Distribute remaining debt over remaining days
+            const targetDailyPayment = remainingDebt / Math.max(daysLeftInMonth, 1)
+            paymentAmount = Math.min(remainingDebt, Math.max(targetDailyPayment, dailyRemaining * 0.2))
+          }
+
+          if (paymentAmount > 0) {
+            schedule.push({
+              date: dateStr,
+              companyId: company.id,
+              companyName: company.name,
+              amount: paymentAmount,
+              priority: company.priority,
+              daysLeft: company.daysLeft,
+              isUrgent: company.isUrgent
+            })
+
+            remainingDebts.set(company.id, remainingDebt - paymentAmount)
+            dailyRemaining -= paymentAmount
+          }
+        }
+      }
+
+      console.log('Generated schedule:', schedule)
+      console.log('Schedule length:', schedule.length)
+      
+      if (schedule.length === 0) {
+        throw new Error('No payment schedule could be generated with current parameters')
+      }
+      
+      setGeneratedSchedule(schedule)
+      setGenerateSuccess(`Successfully generated payment schedule with ${schedule.length} payment items`)
+      
+      // Save schedule to localStorage for persistence
+      try {
+        localStorage.setItem('generated-payment-schedule', JSON.stringify(schedule))
+        console.log('Schedule saved to localStorage')
+      } catch (error) {
+        console.error('Error saving schedule to localStorage:', error)
+        // Don't throw here, just log the error as the schedule was still generated
+      }
+      
     } catch (error) {
-      console.error('Error saving schedule to localStorage:', error)
+      console.error('Error generating schedule:', error)
+      setGenerateError(error instanceof Error ? error.message : 'An unexpected error occurred while generating the schedule')
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -425,11 +525,11 @@ const CompanyPaymentPlanner: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white">
-            <Building size={24} />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white">
+            <Building size={20} className="sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h2 className={`text-xl sm:text-2xl font-bold ${
+            <h2 className={`text-lg sm:text-xl lg:text-2xl font-bold ${
               theme === 'dark' ? 'text-white' : 'text-slate-800'
             }`}>{t('payment.title')}</h2>
             <p className={`text-sm sm:text-base ${
@@ -439,7 +539,7 @@ const CompanyPaymentPlanner: React.FC = () => {
         </div>
         <button
           onClick={() => setShowGenerator(!showGenerator)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
         >
           <Calculator size={18} />
           {showGenerator ? t('payment.hideGenerator') : t('payment.generateSchedule')}
@@ -447,7 +547,7 @@ const CompanyPaymentPlanner: React.FC = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div className={`rounded-xl p-6 shadow-sm border ${
           theme === 'dark' 
             ? 'bg-slate-800 border-slate-700' 
@@ -539,7 +639,7 @@ const CompanyPaymentPlanner: React.FC = () => {
 
       {/* Generator Form */}
       {showGenerator && (
-        <div className={`rounded-xl p-6 shadow-sm border ${
+        <div className={`rounded-xl p-4 sm:p-6 shadow-sm border ${
           theme === 'dark' 
             ? 'bg-slate-800 border-slate-700' 
             : 'bg-white border-slate-200'
@@ -548,6 +648,30 @@ const CompanyPaymentPlanner: React.FC = () => {
             theme === 'dark' ? 'text-white' : 'text-slate-800'
           }`}>{t('payment.generateSchedule')}</h3>
           
+          {/* Error Display */}
+          {generateError && (
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <p className="text-red-800 dark:text-red-200 text-sm font-medium">
+                  {generateError}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Success Display */}
+          {generateSuccess && (
+            <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <p className="text-green-800 dark:text-green-200 text-sm font-medium">
+                  {generateSuccess}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div>
               <label className={`block text-sm font-medium mb-2 ${
@@ -557,14 +681,24 @@ const CompanyPaymentPlanner: React.FC = () => {
                 type="number"
                 step="0.001"
                 value={shopMoney}
-                onChange={(e) => setShopMoney(e.target.value)}
+                onChange={(e) => {
+                  setShopMoney(e.target.value)
+                  clearErrors()
+                }}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  theme === 'dark'
+                  validationErrors.money
+                    ? 'border-red-500 focus:ring-red-500'
+                    : theme === 'dark'
                     ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
                     : 'bg-white border-slate-300 text-slate-900'
                 }`}
                 placeholder="0.000"
               />
+              {validationErrors.money && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {validationErrors.money}
+                </p>
+              )}
             </div>
 
             <div>
@@ -574,62 +708,121 @@ const CompanyPaymentPlanner: React.FC = () => {
               <input
                 type="number"
                 min="0"
-                max="50"
+                max="100"
                 value={safetyMargin}
-                onChange={(e) => setSafetyMargin(e.target.value)}
+                onChange={(e) => {
+                  setSafetyMargin(e.target.value)
+                  clearErrors()
+                }}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  theme === 'dark'
+                  validationErrors.safetyMargin
+                    ? 'border-red-500 focus:ring-red-500'
+                    : theme === 'dark'
                     ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
                     : 'bg-white border-slate-300 text-slate-900'
                 }`}
                 placeholder="20"
               />
+              {validationErrors.safetyMargin && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {validationErrors.safetyMargin}
+                </p>
+              )}
             </div>
-
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${
                 theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
               }`}>{t('payment.dateRange')}</label>
               <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={`flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    theme === 'dark'
-                      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                      : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                />
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={`flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    theme === 'dark'
-                      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                      : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                />
+                <div className="flex-1">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value)
+                      clearErrors()
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      validationErrors.startDate
+                        ? 'border-red-500 focus:ring-red-500'
+                        : theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  {validationErrors.startDate && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {validationErrors.startDate}
+                    </p>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      setEndDate(e.target.value)
+                      clearErrors()
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      validationErrors.endDate
+                        ? 'border-red-500 focus:ring-red-500'
+                        : theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  {validationErrors.endDate && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {validationErrors.endDate}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex gap-3">
+          {/* Additional validation errors */}
+          {validationErrors.companies && (
+            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+                  {validationErrors.companies}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={generatePaymentSchedule}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+              disabled={isGenerating}
+              className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                isGenerating
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
-              <Calculator size={18} />
-              {t('payment.generateSchedule')}
+              {isGenerating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Calculator size={18} />
+                  {t('payment.generateSchedule')}
+                </>
+              )}
             </button>
             
             {generatedSchedule.length > 0 && (
               <button
                 onClick={() => saveSchedule.mutate()}
                 disabled={saveSchedule.isPending}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <CheckCircle size={18} />
                 {saveSchedule.isPending ? t('buttons.saving') : t('buttons.saveSchedule')}
@@ -641,18 +834,18 @@ const CompanyPaymentPlanner: React.FC = () => {
 
       {/* Generated Schedule */}
       {generatedSchedule.length > 0 && (
-        <div className={`rounded-xl p-6 shadow-sm border ${
+        <div className={`rounded-xl p-4 sm:p-6 shadow-sm border ${
           theme === 'dark' 
             ? 'bg-slate-800 border-slate-700' 
             : 'bg-white border-slate-200'
         }`}>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
             <h3 className={`text-lg font-semibold ${
               theme === 'dark' ? 'text-white' : 'text-slate-800'
             }`}>{t('payment.generatedSchedule')}</h3>
             <button
               onClick={clearSchedule}
-              className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="w-full sm:w-auto px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
             >
               <X size={16} />
               {t('buttons.clearSchedule')}
@@ -684,7 +877,7 @@ const CompanyPaymentPlanner: React.FC = () => {
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {items.map((item, index) => {
                     const itemKey = `${item.date}-${item.companyId}`
                     const isPaid = paidItems.has(itemKey) || item.isPaid
@@ -774,7 +967,7 @@ const CompanyPaymentPlanner: React.FC = () => {
 
       {/* Existing Schedules */}
       {schedules.length > 0 && (
-        <div className={`rounded-xl p-6 shadow-sm border ${
+        <div className={`rounded-xl p-4 sm:p-6 shadow-sm border ${
           theme === 'dark' 
             ? 'bg-slate-800 border-slate-700' 
             : 'bg-white border-slate-200'
@@ -783,49 +976,79 @@ const CompanyPaymentPlanner: React.FC = () => {
             theme === 'dark' ? 'text-white' : 'text-slate-800'
           }`}>{t('payment.existingSchedules')}</h3>
           
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full min-w-[600px]">
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-3 px-4 font-medium text-slate-700">{t('common.date')}</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-700">{t('navigation.companies')}</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-700">{t('payment.scheduledAmount')}</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-700">{t('payment.actualAmount')}</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-700">{t('common.status')}</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-700">{t('common.action')}</th>
+                <tr className={`border-b ${
+                  theme === 'dark' ? 'border-slate-600' : 'border-slate-200'
+                }`}>
+                  <th className={`text-left py-3 px-2 sm:px-4 font-medium text-sm ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>{t('common.date')}</th>
+                  <th className={`text-left py-3 px-2 sm:px-4 font-medium text-sm ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>{t('navigation.companies')}</th>
+                  <th className={`text-left py-3 px-2 sm:px-4 font-medium text-sm ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>{t('payment.scheduledAmount')}</th>
+                  <th className={`text-left py-3 px-2 sm:px-4 font-medium text-sm ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>{t('payment.actualAmount')}</th>
+                  <th className={`text-left py-3 px-2 sm:px-4 font-medium text-sm ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>{t('common.status')}</th>
+                  <th className={`text-left py-3 px-2 sm:px-4 font-medium text-sm ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>{t('common.action')}</th>
                 </tr>
               </thead>
               <tbody>
                 {schedules.map((schedule: PaymentSchedule) => (
-                  <tr key={schedule.id} className="border-b border-slate-100">
-                    <td className="py-3 px-4 text-slate-600">
+                  <tr key={schedule.id} className={`border-b ${
+                    theme === 'dark' ? 'border-slate-700' : 'border-slate-100'
+                  }`}>
+                    <td className={`py-3 px-2 sm:px-4 text-sm ${
+                      theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+                    }`}>
                       {new Date(schedule.scheduled_date).toLocaleDateString()}
                     </td>
-                    <td className="py-3 px-4 font-medium text-slate-800">{schedule.entity_name}</td>
-                    <td className="py-3 px-4 text-slate-600">{parseFloat(schedule.scheduled_amount).toFixed(3)} IQD</td>
-                    <td className="py-3 px-4 text-slate-600">
+                    <td className={`py-3 px-2 sm:px-4 font-medium text-sm ${
+                      theme === 'dark' ? 'text-slate-200' : 'text-slate-800'
+                    }`}>{schedule.entity_name}</td>
+                    <td className={`py-3 px-2 sm:px-4 text-sm ${
+                      theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+                    }`}>{parseFloat(schedule.scheduled_amount).toFixed(3)} IQD</td>
+                    <td className={`py-3 px-2 sm:px-4 text-sm ${
+                      theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+                    }`}>
                       {schedule.actual_amount ? `${parseFloat(schedule.actual_amount).toFixed(3)} IQD` : '-'}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-2 sm:px-4">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         schedule.is_paid 
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                          ? theme === 'dark'
+                            ? 'bg-green-900/30 text-green-300'
+                            : 'bg-green-100 text-green-800'
+                          : theme === 'dark'
+                            ? 'bg-yellow-900/30 text-yellow-300'
+                            : 'bg-yellow-100 text-yellow-800'
                       }`}>
                         {schedule.is_paid ? t('payment.paid') : t('common.pending')}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-2 sm:px-4">
                       {!schedule.is_paid ? (
                         <button
                           onClick={() => handlePaymentDone(schedule)}
-                          className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
+                          className="px-2 sm:px-3 py-1 bg-green-600 text-white text-xs sm:text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
                         >
-                          <CheckCircle size={14} />
-                          {t('buttons.done')}
+                          <CheckCircle size={12} className="sm:w-3.5 sm:h-3.5" />
+                          <span className="hidden sm:inline">{t('buttons.done')}</span>
                         </button>
                       ) : (
-                        <span className="text-sm text-slate-500">{t('common.completed')}</span>
+                        <span className={`text-xs sm:text-sm ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                        }`}>{t('common.completed')}</span>
                       )}
                     </td>
                   </tr>
@@ -838,8 +1061,8 @@ const CompanyPaymentPlanner: React.FC = () => {
 
       {/* Payment Confirmation Modal */}
       {showPaymentModal && selectedSchedule && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`rounded-xl p-6 w-full max-w-md mx-4 ${
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl p-4 sm:p-6 w-full max-w-md ${
             theme === 'dark' ? 'bg-slate-800' : 'bg-white'
           }`}>
             <div className="flex items-center justify-between mb-4">
@@ -880,7 +1103,7 @@ const CompanyPaymentPlanner: React.FC = () => {
                 />
               </div>
               
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
                   onClick={() => setShowPaymentModal(false)}
                   className="flex-1 px-4 py-2 text-slate-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -912,8 +1135,8 @@ const CompanyPaymentPlanner: React.FC = () => {
 
       {/* Payment Confirmation Modal */}
       {showConfirmationModal && itemToConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl ${
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-2xl p-4 sm:p-6 max-w-md w-full shadow-2xl ${
             theme === 'dark' ? 'bg-slate-800' : 'bg-white'
           }`}>
             <div className="flex items-center gap-3 mb-4">
@@ -977,7 +1200,7 @@ const CompanyPaymentPlanner: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={cancelPayment}
                 className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${

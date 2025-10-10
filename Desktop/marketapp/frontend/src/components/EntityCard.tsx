@@ -2,6 +2,7 @@ import React, { useState, memo, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { getCurrencySymbol, formatNumber } from '../api'
 import { type Customer, type Company } from '../api'
 import DebtModal from './DebtModal'
 import ReputationTag from './ReputationTag'
@@ -31,7 +32,7 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const navigate = useNavigate()
   const { theme } = useTheme()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   const handleAdjustDebt = useCallback((amount: string, note: string, isIncrease: boolean, override?: boolean) => {
     onAdjustDebt(amount, note, isIncrease, override)
@@ -101,7 +102,7 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
 
   return (
     <>
-      <div className={`rounded-lg p-3 shadow-md border hover:shadow-lg transition-all duration-300 hover:scale-[1.01] animate-slide-up ${
+      <div className={`rounded-lg p-3 sm:p-4 shadow-md border hover:shadow-lg transition-all duration-300 hover:scale-[1.01] animate-slide-up ${
         shouldShowOverdueWarning 
           ? theme === 'dark'
             ? 'border-red-500 bg-red-900/20'
@@ -110,9 +111,9 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
             ? 'border-slate-700 bg-slate-800'
             : 'border-slate-200 bg-white'
       }`}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg shadow-md flex-shrink-0 ${
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center font-display font-bold text-lg shadow-md flex-shrink-0 ${
               theme === 'dark' 
                 ? 'bg-blue-700 text-white' 
                 : 'bg-blue-700 text-white border-2 border-blue-300'
@@ -120,9 +121,9 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
               {entity.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
                 <h3 
-                  className={`text-lg font-display font-semibold cursor-pointer hover:text-blue-600 transition-colors break-words ${
+                  className={`text-base sm:text-lg font-display font-semibold cursor-pointer hover:text-blue-600 transition-colors break-words ${
                     theme === 'dark' ? 'text-white' : 'text-slate-800'
                   }`}
                   onClick={() => navigate(`/${type === 'customer' ? 'customers' : 'companies'}/${entity.id}`)}
@@ -130,18 +131,20 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
                 >
                   {entity.name}
                 </h3>
-                {type === 'customer' && 'reputation' in entity && (
-                  <ReputationTag 
-                    reputation={entity.reputation} 
-                    score={entity.reputation_score}
-                    showScore={true}
-                  />
-                )}
-                {shouldShowOverdueWarning && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                    🔒 {t('debt.locked')}
-                  </span>
-                )}
+                <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                  {type === 'customer' && 'reputation' in entity && (
+                    <ReputationTag 
+                      reputation={entity.reputation} 
+                      score={entity.reputation_score}
+                      showScore={true}
+                    />
+                  )}
+                  {shouldShowOverdueWarning && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                      🔒 {t('debt.locked')}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className={`text-xs space-y-0.5 ${
                 theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
@@ -196,7 +199,7 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
                   <p className="flex items-center gap-2">
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}>💰</span>
                     <span className="break-words">
-                      {t('customer.paidInLast30Days')} {parseFloat(entity.total_paid_30_days).toFixed(3)} {t('currency.iqd')}
+                      {t('customer.paidInLast30Days')} {formatNumber(entity.total_paid_30_days, language)} {getCurrencySymbol(entity.primary_currency || 'USD', language)}
                     </span>
                   </p>
                 )}
@@ -211,14 +214,14 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
               </div>
             </div>
           </div>
-          <div className="text-right flex flex-col items-end">
-            <div className={`px-4 py-2 rounded-lg ${
+          <div className="flex flex-col sm:flex-col items-start sm:items-end gap-3 sm:gap-2">
+            <div className={`px-3 sm:px-4 py-2 rounded-lg w-full sm:w-auto ${
               theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'
             }`}>
-              <p className={`text-lg font-bold ${
+              <p className={`text-base sm:text-lg font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-slate-800'
               }`}>
-                {parseFloat(entity.total_debt || '0').toFixed(3)} {t('currency.iqd')}
+                {formatNumber(entity.total_debt || '0', language)} {getCurrencySymbol(entity.primary_currency || 'USD', language)}
               </p>
               <p className={`text-xs ${
                 theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
@@ -226,17 +229,17 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
                 {t('customer.currentDebt')}
               </p>
             </div>
-            <div className="flex gap-2 mt-2 flex-wrap">
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setShowModal(true)}
-                className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                className="flex-1 sm:flex-none px-3 py-2 text-xs sm:text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
               >
                 {t('debt.adjustDebt')}
               </button>
               {onDeleteEntity && (
                 <button
                   onClick={handleDeleteClick}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                  className="flex-1 sm:flex-none px-3 py-2 text-xs sm:text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
                 >
                   {t('buttons.delete')}
                 </button>
@@ -289,7 +292,7 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
                 <p className={`text-lg font-bold ${
                   theme === 'dark' ? 'text-white' : 'text-slate-800'
                 }`}>
-                  {parseFloat(entity.total_debt || '0').toFixed(3)} {t('currency.iqd')}
+                  {formatNumber(entity.total_debt || '0', language)} {getCurrencySymbol(entity.primary_currency || 'USD', language)}
                 </p>
               </div>
               

@@ -13,4 +13,4 @@ python manage.py migrate --settings=backend.settings_production
 python manage.py collectstatic --noinput --settings=backend.settings_production
 
 # Start the application
-exec gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --settings=backend.settings_production
+exec gunicorn backend.wsgi:application --bind 0.0.0.0:8000

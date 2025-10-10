@@ -113,3 +113,62 @@ body {
     -webkit-touch-callout: none;
   }
 }
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Improve touch targets */
+  button, input, select, textarea {
+    min-height: 44px;
+  }
+  
+  /* Better spacing for mobile */
+  .space-y-6 > * + * {
+    margin-top: 1rem;
+  }
+  
+  /* Improve text readability on mobile */
+  body {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  
+  /* Better modal sizing on mobile */
+  .modal-mobile {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+  
+  /* Improve table scrolling on mobile */
+  .table-mobile {
+    font-size: 14px;
+  }
+  
+  /* Better card spacing on mobile */
+  .card-mobile {
+    padding: 1rem;
+  }
+}
+
+/* Tablet-specific improvements */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Better spacing for tablets */
+  .space-y-6 > * + * {
+    margin-top: 1.5rem;
+  }
+}
+
+/* Improve focus states for accessibility */
+@media (prefers-reduced-motion: no-preference) {
+  *:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+}
+
+/* Dark mode mobile improvements */
+@media (max-width: 640px) {
+  .dark {
+    /* Better contrast on mobile dark mode */
+    --tw-bg-opacity: 1;
+  }
+}

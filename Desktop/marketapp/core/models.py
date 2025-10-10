@@ -211,10 +211,16 @@ class Company(TimestampedModel):
 
 
 class Debt(TimestampedModel):
+    CURRENCY_CHOICES = [
+        ('USD', 'US Dollar'),
+        ('IQD', 'Iraqi Dinar'),
+    ]
+    
     # either customer or company must be set
     customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.CASCADE, related_name='debts')
     company = models.ForeignKey('Company', null=True, blank=True, on_delete=models.CASCADE, related_name='debts')
     amount = models.DecimalField(max_digits=15, decimal_places=3)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
     note = models.CharField(max_length=255, blank=True)
     is_settled = models.BooleanField(default=False)
     due_date = models.DateField(null=True, blank=True)

@@ -10,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 const PWAInstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
   const { theme } = useTheme()
 
   useEffect(() => {
@@ -26,15 +27,23 @@ const PWAInstallPrompt: React.FC = () => {
       return
     }
 
-    // Check if dismissed in this session (but allow it to show again after page refresh)
+    // Check if dismissed
     const dismissed = localStorage.getItem('pwa-install-dismissed')
     if (dismissed) {
-      console.log('PWA: Install prompt was dismissed in this session, but will show again on refresh')
-      // Don't return here - let the prompt show again
+      console.log('PWA: Install prompt was dismissed, not showing')
+      setIsDismissed(true)
+      return
     }
 
     console.log('PWA: Adding beforeinstallprompt listener')
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+
+    // Add global function to reset dismissal for testing
+    ;(window as any).resetPWAInstallPrompt = () => {
+      localStorage.removeItem('pwa-install-dismissed')
+      setIsDismissed(false)
+      console.log('PWA: Install prompt dismissal reset. The prompt should appear now.')
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
@@ -59,17 +68,17 @@ const PWAInstallPrompt: React.FC = () => {
 
   const handleDismiss = () => {
     setShowInstallPrompt(false)
-    // Only dismiss for current session, not persist across refreshes
-    // localStorage.setItem('pwa-install-dismissed', 'true')
+    setIsDismissed(true)
+    // Persist dismissal across refreshes
+    localStorage.setItem('pwa-install-dismissed', 'true')
   }
 
-  // Removed the dismissed check - prompt will show on every page load
 
   // For testing purposes, show a manual install button if no prompt is available
   const showManualInstall = !showInstallPrompt && !deferredPrompt && 
-    !window.matchMedia('(display-mode: standalone)').matches
+    !window.matchMedia('(display-mode: standalone)').matches && !isDismissed
 
-  if (!showInstallPrompt && !showManualInstall) return null
+  if (isDismissed || (!showInstallPrompt && !showManualInstall)) return null
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 animate-slide-up">

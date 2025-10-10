@@ -36,7 +36,7 @@ const LanguageSwitcher: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className={`absolute top-full right-0 mt-2 w-48 rounded-lg shadow-lg border z-50 ${
+        <div className={`absolute top-full right-0 mt-2 w-48 sm:w-56 rounded-lg shadow-lg border z-50 ${
           theme === 'dark'
             ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-slate-200'

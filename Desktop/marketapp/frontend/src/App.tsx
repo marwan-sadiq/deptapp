@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { Plus, TrendingUp, Users, Building2, Search, X, CreditCard, Users2, Building, Calendar, Wallet, Filter, Moon, Sun, LogOut } from 'lucide-react'
-import { api, type Customer, type Company } from './api'
+import { api, type Customer, type Company, formatNumber, getCurrencySymbol } from './api'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -26,7 +26,23 @@ function AppContent() {
   const currentPath = location.pathname.split('/')[1] || 'login'
   const { theme, toggleTheme } = useTheme()
   const { t, isRTL } = useLanguage()
-  const { user, logout, isAuthenticated } = useAuth()
+  const { user, logout, isAuthenticated, isLoading } = useAuth()
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${
+        theme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'
+      }`}>
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+            {t('status.loading')}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   // If not authenticated, show only login
   if (!isAuthenticated) {
@@ -49,9 +65,9 @@ function AppContent() {
         : 'bg-slate-50'
     }`} dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <header className="mb-6 flex flex-col gap-4">
           <div className="animate-fade-in">
-            <h1 className={`text-3xl sm:text-4xl font-display font-bold mb-2 transition-colors duration-200 ${
+            <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-display font-bold mb-2 transition-colors duration-200 ${
               theme === 'dark' ? 'text-white' : 'text-slate-800'
             }`}>
               {t('app.title')}
@@ -62,7 +78,7 @@ function AppContent() {
               {t('app.subtitle')}
             </p>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center">
             {/* User Info */}
             <div className={`px-3 py-2 rounded-lg ${
               theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'
@@ -74,38 +90,40 @@ function AppContent() {
               </p>
             </div>
             
-            <LanguageSwitcher />
-            <button
-              onClick={toggleTheme}
-              className={`p-3 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg ${
-                theme === 'dark' 
-                  ? 'bg-slate-700 text-yellow-400 hover:bg-slate-600' 
-                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-              }`}
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <button
-              onClick={logout}
-              className={`p-3 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg ${
-                theme === 'dark' 
-                  ? 'bg-red-700 text-red-200 hover:bg-red-600' 
-                  : 'bg-red-200 text-red-700 hover:bg-red-300'
-              }`}
-              title={t('auth.logout')}
-            >
-              <LogOut size={20} />
-            </button>
+            <div className="flex gap-2 items-center justify-end sm:justify-start">
+              <LanguageSwitcher />
+              <button
+                onClick={toggleTheme}
+                className={`p-3 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg ${
+                  theme === 'dark' 
+                    ? 'bg-slate-700 text-yellow-400 hover:bg-slate-600' 
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                }`}
+                title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <button
+                onClick={logout}
+                className={`p-3 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg ${
+                  theme === 'dark' 
+                    ? 'bg-red-700 text-red-200 hover:bg-red-600' 
+                    : 'bg-red-200 text-red-700 hover:bg-red-300'
+                }`}
+                title={t('auth.logout')}
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
           </div>
         </header>
 
-        <nav className={`rounded-xl shadow-lg p-2 mb-8 sticky top-4 z-10 transition-all duration-200 ${
+        <nav className={`rounded-xl shadow-lg p-2 mb-6 sticky top-4 z-10 transition-all duration-200 ${
           theme === 'dark' 
             ? 'bg-slate-800 border border-slate-700' 
             : 'bg-white border border-slate-200'
         }`}>
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-2 overflow-x-auto">
             <NavTab to="/" icon={<TrendingUp size={18} />} active={currentPath === 'dashboard'}>{t('navigation.dashboard')}</NavTab>
             <NavTab to="/customers" icon={<Users size={18} />} active={currentPath === 'customers'}>{t('navigation.customers')}</NavTab>
             <NavTab to="/companies" icon={<Building2 size={18} />} active={currentPath === 'companies'}>{t('navigation.companies')}</NavTab>
@@ -129,33 +147,36 @@ function AppContent() {
 
 function App() {
   return (
-    <ErrorBoundary>
+    <LanguageProvider>
       <ThemeProvider>
-        <LanguageProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <ErrorBoundary>
             <AppContent />
-          </AuthProvider>
-        </LanguageProvider>
+          </ErrorBoundary>
+        </AuthProvider>
       </ThemeProvider>
-    </ErrorBoundary>
+    </LanguageProvider>
   )
 }
 
 
 function Dashboard() {
   const { theme } = useTheme()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
+  const { isAuthenticated } = useAuth()
   const { data: custData, error: custError } = useQuery({ 
     queryKey: ['customers'], 
     queryFn: async () => (await api.get('customers/')).data,
     retry: false,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    enabled: isAuthenticated
   })
   const { data: compData, error: compError } = useQuery({ 
     queryKey: ['companies'], 
     queryFn: async () => (await api.get('companies/')).data,
     retry: false,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    enabled: isAuthenticated
   })
   const { data: shopData } = useQuery({ 
     queryKey: ['shop-money'], 
@@ -168,16 +189,51 @@ function Dashboard() {
       }
     },
     retry: false,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    enabled: isAuthenticated
   })
   
   const customers = custData?.results || []
   const companies = compData?.results || []
 
-  const sumDebts = (items: any[]) => items.reduce((acc, x) => acc + (parseFloat(x.total_debt || '0') || 0), 0)
-  
-  const customerDebtTotal = sumDebts(customers)
-  const companyDebtTotal = sumDebts(companies)
+  // Calculate separate totals for each currency
+  const calculateCurrencyTotals = (items: any[]) => {
+    const totals = { USD: 0, IQD: 0 }
+    items.forEach(item => {
+      const debt = parseFloat(item.total_debt || '0') || 0
+      if (debt > 0) {
+        const currency = item.primary_currency || 'USD'
+        if (currency === 'USD') {
+          totals.USD += debt
+        } else if (currency === 'IQD') {
+          totals.IQD += debt
+        }
+      }
+    })
+    return totals
+  }
+
+  const customerTotals = calculateCurrencyTotals(customers)
+  const companyTotals = calculateCurrencyTotals(companies)
+
+  // Format currency totals for display
+  const formatCurrencyTotals = (totals: { USD: number, IQD: number }) => {
+    const parts = []
+    if (totals.USD > 0) {
+      parts.push(`${formatNumber(totals.USD, language)} ${getCurrencySymbol('USD', language)}`)
+    }
+    if (totals.IQD > 0) {
+      parts.push(`${formatNumber(totals.IQD, language)} ${getCurrencySymbol('IQD', language)}`)
+    }
+    
+    if (parts.length === 0) {
+      return '0'
+    } else if (parts.length === 1) {
+      return parts[0]
+    } else {
+      return parts.join(' + ')
+    }
+  }
 
   const totalShopMoney = parseFloat(shopData?.current_money || '0')
 
@@ -229,43 +285,43 @@ function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Shop Money Section */}
-      <div className={`rounded-2xl p-8 shadow-xl border ${
+      <div className={`rounded-2xl p-4 sm:p-6 lg:p-8 shadow-xl border ${
         theme === 'dark' 
           ? 'bg-slate-800 border-slate-700' 
           : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'
       }`}>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-lg ${
               theme === 'dark' 
                 ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' 
                 : 'bg-green-900 text-white'
             }`}>
-              <Wallet size={28} />
+              <Wallet size={24} className="sm:w-7 sm:h-7" />
             </div>
             <div>
-              <h3 className={`text-2xl font-display font-bold ${
+              <h3 className={`text-xl sm:text-2xl font-display font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-slate-800'
               }`}>
                 {t('shopMoney.title')}
               </h3>
-              <p className={`text-base font-sans ${
+              <p className={`text-sm sm:text-base font-sans ${
                 theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
               }`}>
                 {t('shopMoney.subtitle')}
               </p>
             </div>
           </div>
-          <div className={`px-8 py-4 rounded-xl shadow-sm ${
+          <div className={`px-4 sm:px-6 lg:px-8 py-3 sm:py-4 rounded-xl shadow-sm w-full sm:w-auto ${
             theme === 'dark' ? 'bg-green-900/20' : 'bg-gradient-to-br from-green-50 to-green-100'
           }`}>
             <div className="text-center">
-              <p className={`text-4xl font-display font-bold ${
+              <p className={`text-2xl sm:text-3xl lg:text-4xl font-display font-bold ${
                 theme === 'dark' ? 'text-green-300' : 'text-green-800'
               }`}>
-                {totalShopMoney.toFixed(3)} {t('currency.iqd')}
+                {formatNumber(totalShopMoney, language)} {t('currency.iqd')}
               </p>
-              <p className={`text-sm font-sans font-medium ${
+              <p className={`text-xs sm:text-sm font-sans font-medium ${
                 theme === 'dark' ? 'text-green-400' : 'text-green-600'
               }`}>
                 {t('shopMoney.currentAmount')}
@@ -277,17 +333,17 @@ function Dashboard() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <StatCard 
           title={t('dashboard.customerDebt')} 
-          value={`${customerDebtTotal.toFixed(3)} ${t('currency.iqd')}`} 
+          value={formatCurrencyTotals(customerTotals)} 
           subtitle={`${customersWithDebt} ${t('dashboard.withDebt')}`} 
           color="orange" 
           icon={<Users2 size={24} />}
         />
         <StatCard 
           title={t('dashboard.companyDebt')} 
-          value={`${companyDebtTotal.toFixed(3)} ${t('currency.iqd')}`} 
+          value={formatCurrencyTotals(companyTotals)} 
           subtitle={`${companiesWithDebt} ${t('dashboard.withDebt')}`} 
           color="purple" 
           icon={<Building size={24} />}
@@ -302,7 +358,7 @@ function Dashboard() {
       </div>
 
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         <TopDebtors title={t('dashboard.topCustomerDebts')} items={customers} type="customer" />
         <TopDebtors title={t('dashboard.topCompanyDebts')} items={companies} type="company" />
       </div>
@@ -325,7 +381,12 @@ function CustomersPage() {
   const qc = useQueryClient()
   const { t } = useLanguage()
   const { theme } = useTheme()
-  const { data } = useQuery({ queryKey: ['customers'], queryFn: async () => (await api.get('customers/')).data })
+  const { isAuthenticated } = useAuth()
+  const { data } = useQuery({ 
+    queryKey: ['customers'], 
+    queryFn: async () => (await api.get('customers/')).data,
+    enabled: isAuthenticated
+  })
   const customers = data?.results || []
 
   // Apply filters
@@ -445,7 +506,7 @@ function CustomersPage() {
   }
 
   const createCustomer = useMutation({
-    mutationFn: async (args: { customer: Partial<Customer>; initialAmount?: string; note?: string; dueDays?: string }) => {
+    mutationFn: async (args: { customer: Partial<Customer>; initialAmount?: string; currency?: string; note?: string; dueDays?: string }) => {
       const res = await api.post('customers/', args.customer)
       const newCustomer: Customer = res.data
       if (args.initialAmount && parseFloat(args.initialAmount) > 0) {
@@ -460,7 +521,7 @@ function CustomersPage() {
           }
         }
         
-        await api.post('debts/', { customer: newCustomer.id, company: null, amount: args.initialAmount, note: args.note || '', due_date: dueDate, override: false })
+        await api.post('debts/', { customer: newCustomer.id, company: null, amount: args.initialAmount, currency: args.currency || 'USD', note: args.note || '', due_date: dueDate, override: false })
         // Invalidate queries after creating debt to refresh the customer's total_debt
         qc.invalidateQueries({ queryKey: ['customers'] })
       }
@@ -493,7 +554,7 @@ function CustomersPage() {
         }`}>{t('navigation.customers')}</h2>
         <button
           onClick={() => setShowForm(!showForm)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-sans font-medium hover:bg-blue-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center gap-2"
+              className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl font-sans font-medium hover:bg-blue-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center justify-center gap-2"
         >
           {showForm ? <X size={18} /> : <Plus size={18} />}
           {showForm ? t('buttons.cancel') : t('customer.addCustomer')}
@@ -702,7 +763,12 @@ function CompaniesPage() {
   const qc = useQueryClient()
   const { theme } = useTheme()
   const { t } = useLanguage()
-  const { data } = useQuery({ queryKey: ['companies'], queryFn: async () => (await api.get('companies/')).data })
+  const { isAuthenticated } = useAuth()
+  const { data } = useQuery({ 
+    queryKey: ['companies'], 
+    queryFn: async () => (await api.get('companies/')).data,
+    enabled: isAuthenticated
+  })
   const companies = data?.results || []
 
   // Apply filters
@@ -808,7 +874,7 @@ function CompaniesPage() {
   })
 
   const createCompany = useMutation({
-    mutationFn: async (args: { company: Partial<Company>; initialAmount?: string; note?: string; dueDays?: string }) => {
+    mutationFn: async (args: { company: Partial<Company>; initialAmount?: string; currency?: string; note?: string; dueDays?: string }) => {
       console.log('Creating company with args:', args)
       const res = await api.post('companies/', args.company)
       console.log('Company created successfully:', res.data)
@@ -825,8 +891,8 @@ function CompaniesPage() {
           }
         }
         
-        console.log('Creating initial debt for company:', { company: newCompany.id, amount: args.initialAmount, note: args.note, due_date: dueDate })
-        await api.post('debts/', { company: newCompany.id, customer: null, amount: args.initialAmount, note: args.note || '', due_date: dueDate, override: false })
+        console.log('Creating initial debt for company:', { company: newCompany.id, amount: args.initialAmount, currency: args.currency, note: args.note, due_date: dueDate })
+        await api.post('debts/', { company: newCompany.id, customer: null, amount: args.initialAmount, currency: args.currency || 'USD', note: args.note || '', due_date: dueDate, override: false })
       }
       return newCompany
     },
@@ -861,7 +927,7 @@ function CompaniesPage() {
         }`}>{t('navigation.companies')}</h2>
         <button
           onClick={() => setShowForm(!showForm)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-sans font-medium hover:bg-blue-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center gap-2"
+              className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-xl font-sans font-medium hover:bg-blue-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center justify-center gap-2"
         >
           {showForm ? <X size={18} /> : <Plus size={18} />}
           {showForm ? t('buttons.cancel') : t('company.addCompany')}

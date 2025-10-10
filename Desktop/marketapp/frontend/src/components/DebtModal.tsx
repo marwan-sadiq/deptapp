@@ -127,12 +127,12 @@ const DebtModal: React.FC<DebtModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto ${
+      <div className={`rounded-xl shadow-2xl max-w-md w-full max-h-[95vh] overflow-y-auto ${
         theme === 'dark' ? 'bg-slate-800' : 'bg-white'
       }`}>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className={`text-xl font-bold ${
+        <div className="p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className={`text-lg sm:text-xl font-bold ${
               theme === 'dark' ? 'text-white' : 'text-slate-800'
             }`}>
               {t('debt.manageDebt')}
@@ -174,25 +174,25 @@ const DebtModal: React.FC<DebtModalProps> = ({
                 {t('debt.whatToDo')}
               </p>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   onClick={() => handleChoice(true)}
                   disabled={isCheckingCredit}
-                  className="p-6 bg-green-50 border-2 border-green-200 rounded-xl hover:bg-green-100 hover:border-green-300 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-4 sm:p-6 bg-green-50 border-2 border-green-200 rounded-xl hover:bg-green-100 hover:border-green-300 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center group-hover:bg-green-600 transition-colors">
+                  <div className="flex flex-col items-center gap-2 sm:gap-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 rounded-full flex items-center justify-center group-hover:bg-green-600 transition-colors">
                       {isCheckingCredit ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                        <Plus size={24} className="text-white" />
+                        <Plus size={20} className="sm:w-6 sm:h-6 text-white" />
                       )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-green-800">
+                    <div className="text-center">
+                      <p className="text-sm sm:text-base font-semibold text-green-800">
                         {isCheckingCredit ? t('debt.checking') : t('debt.increase')}
                       </p>
-                      <p className="text-sm text-green-600">
+                      <p className="text-xs sm:text-sm text-green-600">
                         {isCheckingCredit ? t('debt.verifyingCredit') : t('debt.addToDebt')}
                       </p>
                     </div>
@@ -201,15 +201,15 @@ const DebtModal: React.FC<DebtModalProps> = ({
 
                 <button
                   onClick={() => handleChoice(false)}
-                  className="p-6 bg-red-50 border-2 border-red-200 rounded-xl hover:bg-red-100 hover:border-red-300 transition-all group"
+                  className="p-4 sm:p-6 bg-red-50 border-2 border-red-200 rounded-xl hover:bg-red-100 hover:border-red-300 transition-all group"
                 >
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center group-hover:bg-red-600 transition-colors">
-                      <Minus size={24} className="text-white" />
+                  <div className="flex flex-col items-center gap-2 sm:gap-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center group-hover:bg-red-600 transition-colors">
+                      <Minus size={20} className="sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div>
-                      <p className="font-semibold text-red-800">{t('debt.decrease')}</p>
-                      <p className="text-sm text-red-600">{t('debt.reduceDebt')}</p>
+                    <div className="text-center">
+                      <p className="text-sm sm:text-base font-semibold text-red-800">{t('debt.decrease')}</p>
+                      <p className="text-xs sm:text-sm text-red-600">{t('debt.reduceDebt')}</p>
                     </div>
                   </div>
                 </button>
@@ -285,7 +285,7 @@ const DebtModal: React.FC<DebtModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -334,7 +334,7 @@ const DebtModal: React.FC<DebtModalProps> = ({
                   {t('debt.managerOverride')}
                 </p>
                 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     type="button"
                     onClick={() => setStep('form')}

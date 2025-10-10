@@ -55,7 +55,7 @@ const ShopMoneyInput: React.FC = () => {
       <div className="flex items-center justify-end">
         <button
           onClick={handleEdit}
-          className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center gap-2"
+          className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center justify-center gap-2"
         >
           <Save size={18} />
           {isEditing ? t('buttons.cancel') : t('shopMoney.edit')}
@@ -84,10 +84,10 @@ const ShopMoneyInput: React.FC = () => {
                 autoFocus
               />
             </div>
-            <div className="flex gap-4 justify-end">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end">
               <button
                 onClick={() => setIsEditing(false)}
-                className={`px-6 py-3 text-base font-medium rounded-xl transition-all duration-200 ${
+                className={`w-full sm:w-auto px-4 sm:px-6 py-3 text-base font-medium rounded-xl transition-all duration-200 ${
                   theme === 'dark'
                     ? 'text-slate-300 bg-slate-700 hover:bg-slate-600'
                     : 'text-slate-600 bg-gray-100 hover:bg-gray-200'
@@ -98,7 +98,7 @@ const ShopMoneyInput: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={!shopMoney || parseFloat(shopMoney) < 0}
-                className="px-6 py-3 text-base font-medium text-white bg-green-600 rounded-xl hover:bg-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                className="w-full sm:w-auto px-4 sm:px-6 py-3 text-base font-medium text-white bg-green-600 rounded-xl hover:bg-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
                 {t('shopMoney.save')}
               </button>

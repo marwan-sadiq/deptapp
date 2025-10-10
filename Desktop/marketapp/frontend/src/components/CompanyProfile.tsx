@@ -4,7 +4,7 @@ import { ArrowLeft, Building, Phone, MapPin, DollarSign, AlertCircle, CheckCircl
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import { useLanguage } from '../contexts/LanguageContext'
-import { api, type Debt } from '../api'
+import { api, type Debt, getCurrencySymbol, formatNumber } from '../api'
 import DebtModal from './DebtModal'
 
 const CompanyProfile: React.FC = () => {
@@ -13,7 +13,7 @@ const CompanyProfile: React.FC = () => {
   const [showDebtModal, setShowDebtModal] = useState(false)
   const queryClient = useQueryClient()
   const { theme } = useTheme()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
 
   // Fetch company data
@@ -175,25 +175,35 @@ const CompanyProfile: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/companies')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className={`text-2xl sm:text-3xl font-bold truncate ${
-            theme === 'dark' ? 'text-white' : 'text-slate-800'
-          }`}>{company.name}</h1>
-          <p className={`text-sm sm:text-base ${
-            theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
-          }`}>{t('company.profileHistory')}</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          <button
+            onClick={() => navigate('/companies')}
+            className={`p-2 rounded-lg transition-colors ${
+              theme === 'dark' 
+                ? 'hover:bg-slate-700' 
+                : 'hover:bg-gray-100'
+            }`}
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className={`text-xl sm:text-2xl lg:text-3xl font-bold truncate ${
+              theme === 'dark' ? 'text-white' : 'text-slate-800'
+            }`}>{company.name}</h1>
+            <p className={`text-sm sm:text-base ${
+              theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+            }`}>{t('company.profileHistory')}</p>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
             onClick={handlePrint}
-            className="px-4 py-2 bg-gray-100 text-slate-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+              theme === 'dark'
+                ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                : 'bg-gray-100 text-slate-700 hover:bg-gray-200'
+            }`}
             title="Print Payment History"
           >
             <Printer size={18} />
@@ -201,7 +211,7 @@ const CompanyProfile: React.FC = () => {
           </button>
           <button
             onClick={() => setShowDebtModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
           >
             <Plus size={18} />
             {t('debt.addDebt')}
@@ -210,12 +220,12 @@ const CompanyProfile: React.FC = () => {
       </div>
 
       {/* Company Info */}
-      <div className={`rounded-xl p-6 shadow-sm border ${
+      <div className={`rounded-xl p-4 sm:p-6 shadow-sm border ${
         theme === 'dark' 
           ? 'bg-slate-800 border-slate-700' 
           : 'bg-white border-slate-200'
       }`}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
               theme === 'dark' ? 'bg-blue-900/30' : 'bg-blue-100'
@@ -292,7 +302,7 @@ const CompanyProfile: React.FC = () => {
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className={`rounded-xl p-6 shadow-sm border ${
           theme === 'dark' 
             ? 'bg-slate-800 border-slate-700' 
@@ -440,7 +450,7 @@ const CompanyProfile: React.FC = () => {
                   <p className={`font-bold ${
                     parseFloat(debt.amount || '0') > 0 ? 'text-red-600' : 'text-green-600'
                   }`}>
-                    {parseFloat(debt.amount || '0') > 0 ? '+' : ''}{parseFloat(debt.amount || '0').toFixed(3)} IQD
+                    {parseFloat(debt.amount || '0') > 0 ? '+' : ''}{formatNumber(debt.amount || '0', language)} {getCurrencySymbol(debt.currency || 'USD', language)}
                   </p>
                   {debt.due_date && (
                     <p className="text-xs text-slate-500">
