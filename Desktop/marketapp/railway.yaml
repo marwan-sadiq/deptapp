@@ -1,0 +1,12 @@
+version: 1
+
+services:
+  web:
+    build:
+      builder: nixpacks
+    deploy:
+      startCommand: gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT
+      healthcheckPath: /
+      healthcheckTimeout: 300
+      restartPolicyType: on_failure
+      restartPolicyMaxRetries: 10
