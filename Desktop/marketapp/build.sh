@@ -1,13 +1,12 @@
 #!/bin/bash
-set -e
+echo "Starting build process..."
 
-echo "Installing dependencies..."
+# Install dependencies
+echo "Installing Python dependencies..."
 pip install -r requirements.txt
 
-echo "Running migrations..."
+# Run migrations
+echo "Running database migrations..."
 python manage.py migrate --settings=backend.settings_production
-
-echo "Collecting static files..."
-python manage.py collectstatic --noinput --settings=backend.settings_production
 
 echo "Build completed successfully!"
