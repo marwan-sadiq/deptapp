@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Route, Routes, useLocation } from 'react-router-dom'
-import { Plus, TrendingUp, Users, Building2, Search, X, CreditCard, Users2, Building, Calendar, Wallet, Filter, Moon, Sun, LogOut } from 'lucide-react'
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Plus, TrendingUp, Users, Building2, Search, X, CreditCard, Users2, Building, Calendar, Wallet, Filter, Moon, Sun, LogOut, Calculator } from 'lucide-react'
 import { api, type Customer, type Company, formatNumber, getCurrencySymbol } from './api'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext'
@@ -161,6 +161,7 @@ function App() {
 
 
 function Dashboard() {
+  const navigate = useNavigate()
   const { theme } = useTheme()
   const { t, language } = useLanguage()
   const { isAuthenticated } = useAuth()
@@ -357,6 +358,40 @@ function Dashboard() {
         />
       </div>
 
+
+      {/* Quick Actions */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 className={`text-lg font-semibold ${
+              theme === 'dark' ? 'text-white' : 'text-slate-800'
+            }`}>
+              {t('dashboard.quickActions')}
+            </h3>
+            <p className={`text-sm ${
+              theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              {t('dashboard.quickActionsDesc')}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => navigate('/payments')}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Calculator size={18} />
+              {t('dashboard.generatePlan')}
+            </button>
+            <button
+              onClick={() => navigate('/customers')}
+              className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Users2 size={18} />
+              {t('dashboard.manageCustomers')}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         <TopDebtors title={t('dashboard.topCustomerDebts')} items={customers} type="customer" />

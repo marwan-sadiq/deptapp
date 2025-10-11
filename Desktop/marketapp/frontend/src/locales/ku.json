@@ -15,7 +15,11 @@
     "totalAccounts": "کۆی هەموو هەژمارەکان",
     "withDebt": "دەینەدار",
     "topCustomerDebts": "گەورەترین دەینەکانی مشتریان",
-    "topCompanyDebts": "گەورەترین دەینەکانی کۆمپانیاکان"
+    "topCompanyDebts": "گەورەترین دەینەکانی کۆمپانیاکان",
+    "quickActions": "کردارە خێراکان",
+    "quickActionsDesc": "پلانی پارەدان دروست بکە و مشتریان بەڕێوەبەرە",
+    "generatePlan": "پلانی پارەدان دروست بکە",
+    "manageCustomers": "بەڕێوەبردنی مشتریان"
   },
   "shopMoney": {
     "title": "پاره‌ی دوکان",

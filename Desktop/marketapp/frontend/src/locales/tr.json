@@ -15,7 +15,11 @@
     "totalAccounts": "Toplam Hesap",
     "withDebt": "borçlu",
     "topCustomerDebts": "En Yüksek Müşteri Borçları",
-    "topCompanyDebts": "En Yüksek Şirket Borçları"
+    "topCompanyDebts": "En Yüksek Şirket Borçları",
+    "quickActions": "Hızlı İşlemler",
+    "quickActionsDesc": "Ödeme planı oluşturun ve müşterileri yönetin",
+    "generatePlan": "Ödeme Planı Oluştur",
+    "manageCustomers": "Müşterileri Yönet"
   },
   "shopMoney": {
     "title": "Mağaza Parası",

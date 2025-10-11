@@ -15,7 +15,11 @@
     "totalAccounts": "إجمالي الحسابات",
     "withDebt": "مدين",
     "topCustomerDebts": "أعلى ديون العملاء",
-    "topCompanyDebts": "أعلى ديون الشركات"
+    "topCompanyDebts": "أعلى ديون الشركات",
+    "quickActions": "الإجراءات السريعة",
+    "quickActionsDesc": "إنشاء خطة دفع وإدارة العملاء",
+    "generatePlan": "إنشاء خطة دفع",
+    "manageCustomers": "إدارة العملاء"
   },
   "shopMoney": {
     "title": "أموال المتجر",

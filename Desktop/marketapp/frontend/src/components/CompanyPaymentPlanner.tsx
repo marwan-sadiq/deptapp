@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { DollarSign, Building, CheckCircle, AlertCircle, Calculator, Target, X } from 'lucide-react'
-import { api } from '../api'
+import { api, getCurrencySymbol } from '../api'
 import { useTheme } from '../contexts/ThemeContext'
 import { useLanguage } from '../contexts/LanguageContext'
 
@@ -11,6 +11,7 @@ interface Company {
   total_debt: string
   earliest_due_date?: string
   created_at: string
+  primary_currency?: string
 }
 
 
@@ -35,6 +36,7 @@ interface GeneratedSchedule {
   daysLeft: number
   isUrgent: boolean
   isPaid?: boolean
+  currency: string
 }
 
 const CompanyPaymentPlanner: React.FC = () => {
@@ -59,7 +61,7 @@ const CompanyPaymentPlanner: React.FC = () => {
   
   const queryClient = useQueryClient()
   const { theme } = useTheme()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   // Fetch data
   const { data: companiesData } = useQuery({
@@ -256,7 +258,8 @@ const CompanyPaymentPlanner: React.FC = () => {
             ...c,
             daysLeft,
             isUrgent: daysLeft <= 7,
-            priority: daysLeft <= 0 ? 1 : daysLeft <= 7 ? 2 : daysLeft <= 30 ? 3 : 4
+            priority: daysLeft <= 0 ? 1 : daysLeft <= 7 ? 2 : daysLeft <= 30 ? 3 : 4,
+            currency: c.primary_currency || 'USD' // Include currency information
           }
         })
         .sort((a: any, b: any) => a.priority - b.priority || parseFloat(b.total_debt) - parseFloat(a.total_debt))
@@ -322,7 +325,8 @@ const CompanyPaymentPlanner: React.FC = () => {
               amount: paymentAmount,
               priority: company.priority,
               daysLeft: company.daysLeft,
-              isUrgent: company.isUrgent
+              isUrgent: company.isUrgent,
+              currency: company.currency // Include currency in schedule
             })
 
             remainingDebts.set(company.id, remainingDebt - paymentAmount)
@@ -384,7 +388,8 @@ const CompanyPaymentPlanner: React.FC = () => {
             scheduled_date: item.date,
             scheduled_amount: item.amount.toFixed(3),
             actual_amount: '0',
-            is_paid: false
+            is_paid: false,
+            currency: item.currency // Include currency in payment schedule
           })
         }
       }
@@ -873,7 +878,7 @@ const CompanyPaymentPlanner: React.FC = () => {
                   <span className={`text-sm font-medium ${
                     theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                   }`}>
-                    {t('common.total')}: {items.reduce((sum, item) => sum + item.amount, 0).toFixed(3)} {t('currency.iqd')}
+                    {t('common.total')}: {items.reduce((sum, item) => sum + item.amount, 0).toFixed(3)} {getCurrencySymbol(items[0]?.currency || 'USD', language)}
                   </span>
                 </div>
                 
@@ -911,7 +916,7 @@ const CompanyPaymentPlanner: React.FC = () => {
                             <p className={`text-sm ${
                               theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
                             }`}>
-                              {item.amount.toFixed(3)} IQD
+                              {item.amount.toFixed(3)} {getCurrencySymbol(item.currency, language)}
                             </p>
                           </div>
                           <div className="text-right">
