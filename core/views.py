@@ -149,8 +149,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def debts(self, request, pk=None):
-        debts = Debt.objects.filter(customer_id=pk).order_by('-created_at')
-        return Response(DebtSerializer(debts, many=True).data)
+        # Verify the customer belongs to the current user
+        try:
+            customer = Customer.objects.get(id=pk, user=request.user)
+            debts = Debt.objects.filter(customer_id=pk).order_by('-created_at')
+            return Response(DebtSerializer(debts, many=True).data)
+        except Customer.DoesNotExist:
+            return Response({'error': 'Customer not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
 
     def perform_create(self, serializer):
         instance = serializer.save(user=self.request.user)
@@ -196,8 +201,13 @@ class CompanyViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def debts(self, request, pk=None):
-        debts = Debt.objects.filter(company_id=pk).order_by('-created_at')
-        return Response(DebtSerializer(debts, many=True).data)
+        # Verify the company belongs to the current user
+        try:
+            company = Company.objects.get(id=pk, user=request.user)
+            debts = Debt.objects.filter(company_id=pk).order_by('-created_at')
+            return Response(DebtSerializer(debts, many=True).data)
+        except Company.DoesNotExist:
+            return Response({'error': 'Company not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
 
     def perform_create(self, serializer):
         instance = serializer.save(user=self.request.user)
@@ -357,9 +367,19 @@ class DebtViewSet(viewsets.ModelViewSet):
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = super().get_queryset()
+        # Filter audit logs by user - only show logs for entities owned by the current user
+        user = self.request.user
+        queryset = AuditLog.objects.filter(
+            models.Q(entity_type='customer', entity_id__in=Customer.objects.filter(user=user).values_list('id', flat=True)) |
+            models.Q(entity_type='company', entity_id__in=Company.objects.filter(user=user).values_list('id', flat=True)) |
+            models.Q(entity_type='debt', entity_id__in=Debt.objects.filter(
+                models.Q(customer__user=user) | models.Q(company__user=user)
+            ).values_list('id', flat=True))
+        )
+        
         entity_type = self.request.query_params.get('entity_type')
         entity_id = self.request.query_params.get('entity_id')
         
@@ -374,25 +394,41 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 class PaymentPlanViewSet(viewsets.ModelViewSet):
     queryset = PaymentPlan.objects.all()
     serializer_class = PaymentPlanSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return PaymentPlan.objects.filter(is_active=True).order_by('manual_priority', 'remaining_debt')
+        # Filter payment plans by user - only show plans for customers/companies owned by the current user
+        user = self.request.user
+        return PaymentPlan.objects.filter(
+            models.Q(customer__user=user) | models.Q(company__user=user),
+            is_active=True
+        ).order_by('manual_priority', 'remaining_debt')
 
 
 class PaymentScheduleViewSet(viewsets.ModelViewSet):
     queryset = PaymentSchedule.objects.all()
     serializer_class = PaymentScheduleSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return PaymentSchedule.objects.order_by('scheduled_date')
+        # Filter payment schedules by user - only show schedules for customers/companies owned by the current user
+        user = self.request.user
+        return PaymentSchedule.objects.filter(
+            models.Q(customer__user=user) | models.Q(company__user=user)
+        ).order_by('scheduled_date')
 
 
 class DailyBalanceViewSet(viewsets.ModelViewSet):
     queryset = DailyBalance.objects.all()
     serializer_class = DailyBalanceSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return DailyBalance.objects.order_by('-date')
+        # Filter daily balances by user - only show balances for customers/companies owned by the current user
+        user = self.request.user
+        return DailyBalance.objects.filter(
+            models.Q(customer__user=user) | models.Q(company__user=user)
+        ).order_by('-date')
 
 
 class ShopMoneyViewSet(viewsets.ModelViewSet):
@@ -433,6 +469,7 @@ class ShopMoneyViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def generate_payment_plan(request):
     """
     Generate a payment plan based on daily balances and debts.
@@ -512,6 +549,7 @@ def generate_payment_plan(request):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_payment_schedule(request):
     """
     Get the full payment schedule for a date range.
@@ -562,6 +600,7 @@ def get_payment_schedule(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def mark_payment_completed(request, schedule_id):
     """
     Mark a scheduled payment as completed with actual amount.
@@ -601,6 +640,7 @@ def mark_payment_completed(request, schedule_id):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def payment_analytics(request):
     """
     Get analytics and insights about payment plans.
@@ -667,11 +707,12 @@ def payment_analytics(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_all_reputations(request):
     """
     Update reputation scores for all customers based on their payment behavior.
     """
-    customers = Customer.objects.all()
+    customers = Customer.objects.filter(user=request.user)
     updated_count = 0
     
     for customer in customers:
@@ -685,12 +726,13 @@ def update_all_reputations(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_customer_reputation(request, customer_id):
     """
     Update reputation for a specific customer.
     """
     try:
-        customer = Customer.objects.get(id=customer_id)
+        customer = Customer.objects.get(id=customer_id, user=request.user)
         customer.update_reputation()
         
         return Response({
@@ -705,12 +747,13 @@ def update_customer_reputation(request, customer_id):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def check_customer_credit(request, customer_id):
     """
     Check if a customer can receive new debt.
     """
     try:
-        customer = Customer.objects.get(id=customer_id)
+        customer = Customer.objects.get(id=customer_id, user=request.user)
         can_receive, reason = customer.can_receive_new_debt()
         
         return Response({
@@ -740,9 +783,15 @@ class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
 class EntityActivityViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = EntityActivity.objects.all()
     serializer_class = EntityActivitySerializer
-    
+    permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
-        queryset = super().get_queryset()
+        # Filter entity activities by user - only show activities for customers/companies owned by the current user
+        user = self.request.user
+        queryset = EntityActivity.objects.filter(
+            models.Q(customer__user=user) | models.Q(company__user=user)
+        ).order_by('-created_at')
+        
         customer_id = self.request.query_params.get('customer_id')
         company_id = self.request.query_params.get('company_id')
         
