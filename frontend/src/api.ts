@@ -10,12 +10,27 @@ const getApiBaseUrl = () => {
   return 'https://donnmero.pythonanywhere.com/api/'
 }
 
+// Add cache busting to force fresh requests
+const addCacheBusting = (url: string) => {
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}_t=${Date.now()}`
+}
+
 const apiBaseUrl = getApiBaseUrl()
 console.log('API Base URL:', apiBaseUrl)
 console.log('Current hostname:', window.location.hostname)
+console.log('Frontend Version: 1.0.3 - Cache Busting Enabled')
 
 export const api = axios.create({
   baseURL: apiBaseUrl,
+})
+
+// Add cache busting interceptor
+api.interceptors.request.use((config) => {
+  if (config.url) {
+    config.url = addCacheBusting(config.url)
+  }
+  return config
 })
 
 // Test API connectivity
