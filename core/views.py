@@ -9,6 +9,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.utils import timezone
+from django.db import models
 from decimal import Decimal
 from datetime import datetime, timedelta
 import logging
@@ -234,7 +235,12 @@ class DebtViewSet(viewsets.ModelViewSet):
     serializer_class = DebtSerializer
     
     def get_queryset(self):
-        queryset = super().get_queryset()
+        # Filter debts by user - only show debts for customers/companies owned by the current user
+        user = self.request.user
+        queryset = Debt.objects.filter(
+            models.Q(customer__user=user) | models.Q(company__user=user)
+        ).order_by('-created_at')
+        
         customer_id = self.request.query_params.get('customer')
         company_id = self.request.query_params.get('company')
         
