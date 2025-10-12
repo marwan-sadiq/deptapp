@@ -176,40 +176,28 @@ function Dashboard() {
   const customers = custData?.results || []
   const companies = compData?.results || []
 
-  // Fetch all debts to calculate proper currency totals
-  const { data: allDebtsData } = useQuery({
-    queryKey: ['all-debts'],
-    queryFn: async () => {
-      const response = await api.get('debts/')
-      return response.data.results || response.data
-    },
-    enabled: !!custData && !!compData
-  })
-
-  const allDebts = allDebtsData || []
-
   // Helper function to get currency translation
   const getCurrencyTranslation = useCallback((code: string) => {
     const currencyKey = code.toLowerCase()
     return t(`currency.${currencyKey}`) || code
   }, [t])
 
-  // Calculate debt totals by currency
-  const calculateDebtTotals = (debts: any[]) => {
+  // Calculate debt totals from customer/company data (user-specific)
+  const calculateDebtTotals = (entities: any[], type: 'customer' | 'company') => {
     const totals: { [key: string]: number } = {}
-    debts.forEach((debt: any) => {
-      const amount = parseFloat(debt.amount || '0') || 0
-      const currency = debt.currency_code || 'IQD'
-      totals[currency] = (totals[currency] || 0) + amount
+    entities.forEach((entity: any) => {
+      const debt = parseFloat(entity.total_debt || '0') || 0
+      if (debt > 0) {
+        // For now, assume all debts are in IQD since we don't have currency info in entity totals
+        // TODO: Add currency support to entity total_debt fields
+        totals['IQD'] = (totals['IQD'] || 0) + debt
+      }
     })
     return totals
   }
 
-  const customerDebts = allDebts.filter((debt: any) => debt.customer && !debt.company)
-  const companyDebts = allDebts.filter((debt: any) => debt.company && !debt.customer)
-  
-  const customerDebtTotals = calculateDebtTotals(customerDebts)
-  const companyDebtTotals = calculateDebtTotals(companyDebts)
+  const customerDebtTotals = calculateDebtTotals(customers, 'customer')
+  const companyDebtTotals = calculateDebtTotals(companies, 'company')
 
   // Format currency totals for display
   const formatCurrencyTotals = (totals: { [key: string]: number }) => {
