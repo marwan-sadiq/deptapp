@@ -357,22 +357,23 @@ const createPaymentDebt = useMutation({
     console.log('Company ID:', item.companyId)
     console.log('Original amount:', item.amount)
 
-    // Calculate negative amount (payment reduces debt)
-    const negativeAmount = -Math.abs(Number(item.amount))
+    // First round to 3 decimals, then parse to number, then make negative
+    const roundedAmount = parseFloat(Number(item.amount).toFixed(3))
+    const negativeAmount = -Math.abs(roundedAmount)
+    console.log('Rounded amount:', roundedAmount)
     console.log('Negative amount:', negativeAmount)
 
-    // Format to 3 decimal places (IQD standard)
+    // Convert to string with exactly 3 decimals - CRITICAL for backend validation
     const formattedAmount = negativeAmount.toFixed(3)
     console.log('Formatted amount:', formattedAmount)
+    console.log('Amount string length:', formattedAmount.length)
 
-    // Build payload - IMPORTANT: only send company, not customer
     const payload = {
       company: item.companyId,
-      customer: null,  // Explicitly set to null
+      customer: null,
       amount: formattedAmount,
       note: `Payment completed - ${item.date}`,
-      override: true,  // Allow negative amounts
-      is_settled: false  // This is a payment, not settling the debt
+      override: true
     }
 
     console.log('Final payload:', JSON.stringify(payload, null, 2))
@@ -385,6 +386,7 @@ const createPaymentDebt = useMutation({
     } catch (error: any) {
       console.error('API Error:', error.response?.data)
       console.error('Status:', error.response?.status)
+      console.error('Error details:', JSON.stringify(error.response?.data, null, 2))
       throw error
     }
   },
@@ -395,9 +397,11 @@ const createPaymentDebt = useMutation({
   },
   onError: (error: any) => {
     console.error('Mutation error:', error)
-    alert(`Payment failed: ${error.response?.data?.detail || error.message}`)
+    const errorMsg = error.response?.data?.amount?.[0] || error.response?.data?.detail || error.message
+    alert(`Payment failed: ${errorMsg}`)
   }
 })
+
   // Handle marking generated schedule item as paid
   const handleGeneratedItemPaid = (item: GeneratedSchedule) => {
     setItemToConfirm(item)
