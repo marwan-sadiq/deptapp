@@ -8,7 +8,7 @@ from .settings import *
 # Override settings for production
 DEBUG = False
 SECRET_KEY = os.environ.get('SECRET_KEY')
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = ['donnmero.pythonanywhere.com', 'localhost', '127.0.0.1']
 
 # Database configuration for Railway PostgreSQL
 DATABASES = {

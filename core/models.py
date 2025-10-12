@@ -9,12 +9,12 @@ class UserProfile(models.Model):
     is_manager = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'core_userprofile'
         verbose_name = 'User Profile'
         verbose_name_plural = 'User Profiles'
-    
+
     def __str__(self):
         return f"{self.user.username} ({self.user.email})"
 
@@ -35,7 +35,7 @@ class Customer(TimestampedModel):
         ('poor', 'Poor'),
         ('bad', 'Bad'),
     ]
-    
+
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='customers')
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=50, blank=True)
@@ -55,25 +55,25 @@ class Customer(TimestampedModel):
         """Update reputation based on payment behavior in last 30 days"""
         from django.utils import timezone
         from datetime import timedelta
-        
+
         # 30 days period for production
         thirty_days_ago = timezone.now() - timedelta(days=30)
-        
+
         # Get all debt payments in last 30 days
         recent_payments = self.debts.filter(
             created_at__gte=thirty_days_ago,
             amount__lt=0  # Negative amounts indicate payments
         )
-        
+
         total_paid = abs(sum(p.amount for p in recent_payments))
         self.total_paid_30_days = total_paid
-        
+
         # Calculate current total debt
         current_debt = sum(d.amount for d in self.debts.filter(is_settled=False))
-        
+
         # Get the oldest unpaid debt to check if it's been 30+ days
         oldest_debt = self.debts.filter(is_settled=False).order_by('created_at').first()
-        
+
         # Calculate reputation score (0-100)
         if current_debt == 0:
             # No debt = excellent
@@ -102,32 +102,32 @@ class Customer(TimestampedModel):
             # This gives new customers a fair chance before being penalized
             self.reputation_score = 70
             self.reputation = 'good'
-        
+
         # Update last payment date
         if recent_payments.exists():
             self.last_payment_date = recent_payments.latest('created_at').created_at
-        
+
         self.save()
 
     def can_receive_new_debt(self):
         """Check if customer can receive new debt based on payment history and due dates"""
         from django.utils import timezone
         from datetime import timedelta, date
-        
+
         # 30 days period for production
         thirty_days_ago = timezone.now() - timedelta(days=30)
         today = date.today()
-        
+
         # Check if customer has any positive debt (not overpaid)
         current_debt = sum(d.amount for d in self.debts.filter(is_settled=False))
-        
+
         if current_debt <= 0:
             # No debt or overpaid = can receive new debt
             if current_debt < 0:
                 return True, f"Customer is overpaid by ${abs(current_debt)} - can receive new debt"
             else:
                 return True, "Customer has no debt"
-        
+
         # Check if customer is new (created within last 30 days)
         # New customers get a grace period before payment requirements kick in
         if self.created_at and self.created_at > thirty_days_ago:
@@ -137,7 +137,7 @@ class Customer(TimestampedModel):
                 due_date__isnull=False,
                 due_date__lt=today
             )
-            
+
             if overdue_debts.exists():
                 # Has overdue payments = cannot receive new debt
                 overdue_count = overdue_debts.count()
@@ -145,7 +145,7 @@ class Customer(TimestampedModel):
             else:
                 # New customer with no overdue payments = can receive new debt
                 return True, "New customer - can receive new debt"
-        
+
         # For existing customers (created more than 30 days ago)
         # Check if customer has any overdue payments
         overdue_debts = self.debts.filter(
@@ -153,18 +153,18 @@ class Customer(TimestampedModel):
             due_date__isnull=False,
             due_date__lt=today
         )
-        
+
         if overdue_debts.exists():
             # Has overdue payments = cannot receive new debt
             overdue_count = overdue_debts.count()
             return False, f"Customer has {overdue_count} overdue payment(s) - must pay before receiving new debt"
-        
+
         # Check if customer has made any payments in last 30 days
         recent_payments = self.debts.filter(
             created_at__gte=thirty_days_ago,
             amount__lt=0  # Negative amounts indicate payments
         )
-        
+
         if recent_payments.exists():
             # Has made payments in last 30 days = can receive new debt
             total_paid = abs(sum(p.amount for p in recent_payments))
@@ -172,14 +172,14 @@ class Customer(TimestampedModel):
         else:
             # No payments in last 30 days = cannot receive new debt
             return False, "Customer has not made any payments in the last 30 days"
-    
+
     def update_total_debt(self):
         """Update the total debt for this customer"""
         from django.db.models import Sum
         total = self.debts.aggregate(total=Sum('amount'))['total'] or 0
         self.total_debt = total
         self.save(update_fields=['total_debt'])
-    
+
     def get_earliest_due_date(self):
         """Get the earliest due date among all debts for this customer"""
         earliest_debt = self.debts.filter(due_date__isnull=False).order_by('due_date').first()
@@ -196,14 +196,14 @@ class Company(TimestampedModel):
 
     def __str__(self) -> str:
         return self.name
-    
+
     def update_total_debt(self):
         """Update the total debt for this company"""
         from django.db.models import Sum
         total = self.debts.aggregate(total=Sum('amount'))['total'] or 0
         self.total_debt = total
         self.save(update_fields=['total_debt'])
-    
+
     def get_earliest_due_date(self):
         """Get the earliest due date among all debts for this company"""
         earliest_debt = self.debts.filter(due_date__isnull=False).order_by('due_date').first()
@@ -211,10 +211,9 @@ class Company(TimestampedModel):
 
 
 class Debt(TimestampedModel):
-    # either customer or company must be set
     customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.CASCADE, related_name='debts')
     company = models.ForeignKey('Company', null=True, blank=True, on_delete=models.CASCADE, related_name='debts')
-    amount = models.DecimalField(max_digits=15, decimal_places=3)
+    amount = models.DecimalField(max_digits=15, decimal_places=3)  # This is fine - keep it
     note = models.CharField(max_length=255, blank=True)
     is_settled = models.BooleanField(default=False)
     due_date = models.DateField(null=True, blank=True)
@@ -258,7 +257,7 @@ class PaymentPlan(TimestampedModel):
         (2, 'Medium'),
         (3, 'Low'),
     ]
-    
+
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True, related_name='payment_plans')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='payment_plans')
     total_debt = models.DecimalField(max_digits=12, decimal_places=2)
@@ -324,15 +323,15 @@ class EntityActivity(TimestampedModel):
         ('profile_updated', 'Profile Updated'),
         ('profile_deleted', 'Profile Deleted'),
     ]
-    
+
     # Either customer or company must be set
     customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.CASCADE, related_name='activities')
     company = models.ForeignKey('Company', null=True, blank=True, on_delete=models.CASCADE, related_name='activities')
-    
+
     activity_type = models.CharField(max_length=20, choices=ACTIVITY_TYPES)
     description = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
-    
+
     # Reference to the related object (debt, etc.)
     related_object_type = models.CharField(max_length=50, blank=True)  # 'debt', 'customer', 'company'
     related_object_id = models.IntegerField(null=True, blank=True)

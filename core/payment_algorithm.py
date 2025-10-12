@@ -6,42 +6,45 @@ from .models import PaymentPlan, PaymentSchedule, DailyBalance, Customer, Compan
 
 class PaymentPlanner:
     """
-    Advanced payment planning algorithm that generates fair daily payment schedules
-    based on available money, priority, and debt size.
+    Payment planning algorithm that prioritizes debts by amount (highest first).
+    Simple and logical: bigger debts get paid first.
     """
     
     def __init__(self):
-        self.priority_weights = {1: 3.0, 2: 2.0, 3: 1.0}  # High, Medium, Low
+        # Priority weights (1 = highest, 3 = lowest)
+        self.priority_weights = {1: 3.0, 2: 2.0, 3: 1.0}
     
     def calculate_debt_priority(self, total_debt: Decimal, paid_amount: Decimal, 
-                              manual_priority: int, days_overdue: int = 0) -> float:
+                              manual_priority: int) -> float:
         """
-        Calculate dynamic priority score for a debt.
-        Higher score = higher priority for payment.
+        Calculate priority score for a debt.
+        Optimized for supermarkets with many suppliers - spreads payments across 8-12 companies daily.
+        Priority is based on:
+        1. Manual priority (if set by user)
+        2. Remaining debt amount (balanced to avoid one company dominating)
         """
         remaining_debt = total_debt - paid_amount
         if remaining_debt <= 0:
             return 0.0
         
-        # Base priority from manual setting
-        base_priority = self.priority_weights.get(manual_priority, 2.0)
+        # Get base priority weight (1=high, 2=medium, 3=low)
+        base_weight = self.priority_weights.get(manual_priority, 2.0)
         
-        # Debt size factor (larger debts get slightly higher priority)
-        debt_size_factor = min(1.5, float(remaining_debt) / 10000)  # Cap at 1.5x
+        # Use logarithmic scale to balance distribution across many companies
+        # This ensures 8-12 companies get paid each day instead of just 1-2
+        # log10(10000) = 4, log10(100) = 2, log10(1000) = 3
+        import math
+        debt_amount_score = math.log10(max(float(remaining_debt), 1)) + 1
         
-        # Overdue factor (overdue debts get higher priority)
-        overdue_factor = 1.0 + (days_overdue * 0.1)  # 10% increase per day overdue
+        # Final score: multiply base priority by logarithmic debt amount
+        final_score = base_weight * debt_amount_score
         
-        # Urgency factor (debts closer to completion get priority)
-        completion_ratio = float(paid_amount) / float(total_debt) if total_debt > 0 else 0
-        urgency_factor = 1.0 + (completion_ratio * 0.5)  # Up to 50% boost for near-completion
-        
-        return base_priority * debt_size_factor * overdue_factor * urgency_factor
+        return final_score
     
     def generate_payment_plan(self, daily_balances: Dict[str, Decimal], 
                             debts: List[Dict]) -> Dict:
         """
-        Generate a comprehensive payment plan based on available daily balances and debts.
+        Generate payment plan prioritizing by debt amount.
         
         Args:
             daily_balances: Dict with date strings as keys and available amounts as values
@@ -50,7 +53,7 @@ class PaymentPlanner:
         Returns:
             Dict containing payment plans and schedules
         """
-        # Sort dates
+        # Sort dates chronologically
         sorted_dates = sorted(daily_balances.keys())
         
         # Create payment plans for each debt
@@ -76,6 +79,8 @@ class PaymentPlanner:
         
         # Generate daily payment schedules
         schedules = []
+        total_scheduled = Decimal('0')
+        
         for date_str in sorted_dates:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
             available_amount = daily_balances[date_str]
@@ -83,55 +88,62 @@ class PaymentPlanner:
             if available_amount <= 0:
                 continue
             
-            # Calculate priorities for this day
+            # Calculate priority scores for all debts with remaining balance
             debt_priorities = []
             for plan in payment_plans:
                 if plan.remaining_debt > 0:
-                    # Calculate days overdue (simplified - could be enhanced)
-                    days_overdue = 0  # Could calculate based on due dates
-                    
                     priority_score = self.calculate_debt_priority(
-                        plan.total_debt, plan.paid_amount, 
-                        plan.manual_priority, days_overdue
+                        plan.total_debt, 
+                        plan.paid_amount, 
+                        plan.manual_priority
                     )
-                    
                     debt_priorities.append((plan, priority_score))
             
-            # Sort by priority (highest first)
+            # Sort by priority score (HIGHEST FIRST)
+            # This means largest debts with high priority come first
             debt_priorities.sort(key=lambda x: x[1], reverse=True)
             
-            # Distribute available amount
-            remaining_amount = available_amount
-            for plan, priority_score in debt_priorities:
-                if remaining_amount <= 0:
-                    break
-                
-                # Calculate payment amount for this debt
-                payment_amount = self._calculate_payment_amount(
-                    plan, remaining_amount, priority_score, debt_priorities
-                )
-                
-                if payment_amount > 0:
-                    # Create payment schedule
-                    schedule = PaymentSchedule(
-                        payment_plan=plan,
-                        scheduled_date=date,
-                        scheduled_amount=payment_amount,
-                        is_paid=False
-                    )
-                    schedules.append(schedule)
+            # Calculate total priority weight for proportional distribution
+            total_priority_weight = sum(score for _, score in debt_priorities)
+            
+            if total_priority_weight > 0:
+                # Distribute money proportionally based on priority scores
+                for plan, priority_score in debt_priorities:
+                    # Calculate proportional share of available money
+                    # Higher priority = larger share
+                    proportion = priority_score / total_priority_weight
+                    allocated_amount = available_amount * Decimal(str(proportion))
                     
-                    # Update remaining amounts
-                    remaining_amount -= payment_amount
-                    plan.remaining_debt -= payment_amount
-                    plan.paid_amount += payment_amount
+                    # Don't pay more than remaining debt
+                    payment_amount = min(allocated_amount, plan.remaining_debt)
+                    
+                    if payment_amount > 0:
+                        # Round to 2 decimal places
+                        payment_amount = payment_amount.quantize(Decimal('0.01'))
+                        
+                        # Create payment schedule
+                        schedule = PaymentSchedule(
+                            payment_plan=plan,
+                            scheduled_date=date,
+                            scheduled_amount=payment_amount,
+                            is_paid=False
+                        )
+                        schedules.append(schedule)
+                        
+                        # Update remaining amounts
+                        plan.remaining_debt -= payment_amount
+                        plan.paid_amount += payment_amount
+                        total_scheduled += payment_amount
+        
+        # Calculate total available money
+        total_available = sum(daily_balances.values())
         
         return {
             'payment_plans': payment_plans,
             'schedules': schedules,
-            'total_scheduled': sum(s.scheduled_amount for s in schedules),
-            'total_available': sum(daily_balances.values()),
-            'utilization_rate': sum(s.scheduled_amount for s in schedules) / sum(daily_balances.values()) if sum(daily_balances.values()) > 0 else 0
+            'total_scheduled': total_scheduled,
+            'total_available': total_available,
+            'utilization_rate': float(total_scheduled / total_available) if total_available > 0 else 0
         }
     
     def _get_or_create_entity(self, debt: Dict):
@@ -150,104 +162,5 @@ class PaymentPlanner:
         except Customer.DoesNotExist:
             pass
         
-        # Create new company (assuming it's a company if not specified)
+        # Create new company if not found
         return Company.objects.create(name=entity_name)
-    
-    def _calculate_payment_amount(self, plan: PaymentPlan, available_amount: Decimal, 
-                                priority_score: float, all_priorities: List[Tuple]) -> Decimal:
-        """
-        Calculate how much to pay for a specific debt on a given day.
-        Uses proportional distribution based on priority and remaining debt.
-        """
-        if plan.remaining_debt <= 0 or available_amount <= 0:
-            return Decimal('0')
-        
-        # Calculate total priority weight for all remaining debts
-        total_weight = sum(score for _, score in all_priorities)
-        
-        if total_weight == 0:
-            return Decimal('0')
-        
-        # Calculate proportional amount based on priority
-        proportional_amount = (priority_score / total_weight) * available_amount
-        
-        # Don't exceed remaining debt
-        payment_amount = min(proportional_amount, plan.remaining_debt)
-        
-        # Round to 2 decimal places
-        return payment_amount.quantize(Decimal('0.01'))
-    
-    def optimize_schedule(self, schedules: List[PaymentSchedule]) -> List[PaymentSchedule]:
-        """
-        Optimize the payment schedule to minimize the number of partial payments
-        and maximize debt completion.
-        """
-        # Group schedules by payment plan
-        plan_schedules = {}
-        for schedule in schedules:
-            plan_id = schedule.payment_plan.id
-            if plan_id not in plan_schedules:
-                plan_schedules[plan_id] = []
-            plan_schedules[plan_id].append(schedule)
-        
-        optimized_schedules = []
-        
-        for plan_id, plan_schedule_list in plan_schedules.items():
-            # Sort by date
-            plan_schedule_list.sort(key=lambda x: x.scheduled_date)
-            
-            # Try to consolidate payments
-            consolidated = self._consolidate_payments(plan_schedule_list)
-            optimized_schedules.extend(consolidated)
-        
-        return optimized_schedules
-    
-    def _consolidate_payments(self, schedules: List[PaymentSchedule]) -> List[PaymentSchedule]:
-        """
-        Consolidate multiple small payments into fewer, larger payments when possible.
-        """
-        if len(schedules) <= 1:
-            return schedules
-        
-        # Group consecutive days
-        consolidated = []
-        current_group = [schedules[0]]
-        
-        for i in range(1, len(schedules)):
-            current_schedule = schedules[i]
-            last_schedule = current_group[-1]
-            
-            # If consecutive days and small amounts, group them
-            days_diff = (current_schedule.scheduled_date - last_schedule.scheduled_date).days
-            if days_diff <= 2:  # Within 2 days
-                current_group.append(current_schedule)
-            else:
-                # Process current group and start new one
-                consolidated.extend(self._merge_group(current_group))
-                current_group = [current_schedule]
-        
-        # Process final group
-        consolidated.extend(self._merge_group(current_group))
-        
-        return consolidated
-    
-    def _merge_group(self, schedules: List[PaymentSchedule]) -> List[PaymentSchedule]:
-        """
-        Merge a group of schedules into fewer, more efficient payments.
-        """
-        if len(schedules) <= 1:
-            return schedules
-        
-        # Calculate total amount
-        total_amount = sum(s.scheduled_amount for s in schedules)
-        
-        # If total is small, keep as is
-        if total_amount < Decimal('50'):
-            return schedules
-        
-        # Create consolidated payment on the first day
-        first_schedule = schedules[0]
-        first_schedule.scheduled_amount = total_amount
-        
-        # Mark others for deletion (in real implementation, you'd delete them)
-        return [first_schedule]

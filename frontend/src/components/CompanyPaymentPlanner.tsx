@@ -103,15 +103,15 @@ const CompanyPaymentPlanner: React.FC = () => {
     if (shopMoneyData?.current_money) {
       setShopMoney(shopMoneyData.current_money)
     }
-    
+
     // Set default date range (next 30 days)
     const today = new Date()
     const nextMonth = new Date(today)
     nextMonth.setDate(today.getDate() + 30)
-    
+
     setStartDate(today.toISOString().split('T')[0])
     setEndDate(nextMonth.toISOString().split('T')[0])
-    
+
     // Load saved generated schedule from localStorage
     const savedSchedule = localStorage.getItem('generated-payment-schedule')
     if (savedSchedule) {
@@ -143,7 +143,7 @@ const CompanyPaymentPlanner: React.FC = () => {
     console.log('startDate:', startDate)
     console.log('endDate:', endDate)
     console.log('companies:', companies)
-    
+
     if (!startDate || !endDate) {
       console.log('Missing required fields')
       console.log('startDate valid:', !!startDate)
@@ -154,10 +154,10 @@ const CompanyPaymentPlanner: React.FC = () => {
     const start = new Date(startDate)
     const end = new Date(endDate)
     const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    
+
     // Calculate daily budget automatically based on available money and days
     const dailyBudget = availableMoney / daysDiff
-    
+
     console.log('daysDiff:', daysDiff)
     console.log('availableMoney:', availableMoney)
     console.log('dailyBudget (auto-calculated):', dailyBudget)
@@ -166,10 +166,10 @@ const CompanyPaymentPlanner: React.FC = () => {
     const companiesWithDebt = companies
       .filter((c: Company) => parseFloat(c.total_debt || '0') > 0)
       .map((c: Company) => {
-        const daysLeft = c.earliest_due_date 
+        const daysLeft = c.earliest_due_date
           ? Math.ceil((new Date(c.earliest_due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
           : 999 // No due date = low priority
-        
+
         return {
           ...c,
           daysLeft,
@@ -190,22 +190,22 @@ const CompanyPaymentPlanner: React.FC = () => {
       const currentDate = new Date(start)
       currentDate.setDate(start.getDate() + i)
       const dateStr = currentDate.toISOString().split('T')[0]
-      
+
       let dailyRemaining = dailyBudget
 
       // Pay companies in priority order
       for (const company of companiesWithDebt) {
         if (dailyRemaining <= 0) break
-        
+
         const remainingDebt = remainingDebts.get(company.id) || 0
         if (remainingDebt <= 0) continue
 
         // Calculate payment amount based on priority and remaining budget
         let paymentAmount = 0
-        
+
         // Calculate how many days are left in the month
         const daysLeftInMonth = daysDiff - i
-        
+
         if (company.priority === 1) { // Overdue - try to pay off completely
           if (remainingDebt <= dailyRemaining) {
             paymentAmount = remainingDebt // Pay off completely
@@ -248,7 +248,7 @@ const CompanyPaymentPlanner: React.FC = () => {
     console.log('Generated schedule:', schedule)
     console.log('Schedule length:', schedule.length)
     setGeneratedSchedule(schedule)
-    
+
     // Save schedule to localStorage for persistence
     try {
       localStorage.setItem('generated-payment-schedule', JSON.stringify(schedule))
@@ -349,21 +349,38 @@ const CompanyPaymentPlanner: React.FC = () => {
   }
 
   // Create payment debt mutation for generated schedule items
-  const createPaymentDebt = useMutation({
-    mutationFn: async (item: GeneratedSchedule) => {
-      await api.post('debts/', {
-        company: item.companyId,
-        customer: null,
-        amount: `-${item.amount}`, // Negative amount indicates payment
-        note: `Payment completed - Generated schedule: ${item.date}`,
-        override: false
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companies'] })
-    }
-  })
 
+const createPaymentDebt = useMutation({
+  mutationFn: async (item: GeneratedSchedule) => {
+    console.log('=== DEBUG INFO ===')
+    console.log('Item:', item)
+    console.log('Original amount:', item.amount)
+    console.log('Amount as number:', Number(item.amount))
+
+    const negativeAmount = -Math.abs(Number(item.amount))
+    console.log('Negative amount:', negativeAmount)
+
+    const formattedAmount = negativeAmount.toFixed(3)
+    console.log('Formatted amount:', formattedAmount)
+    console.log('String length:', formattedAmount.length)
+    console.log('Digit count (excluding signs/decimals):', formattedAmount.replace(/[-\.]/g, '').length)
+
+    const payload = {
+      company: item.companyId,
+      amount: formattedAmount,
+      note: `Payment completed - Generated schedule: ${item.date}`,
+      override: true
+    }
+    console.log('Final payload:', payload)
+    console.log('==================')
+
+    const response = await api.post('debts/', payload)
+    return response.data
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['companies'] })
+  }
+})
   // Handle marking generated schedule item as paid
   const handleGeneratedItemPaid = (item: GeneratedSchedule) => {
     setItemToConfirm(item)
@@ -378,14 +395,14 @@ const CompanyPaymentPlanner: React.FC = () => {
       createPaymentDebt.mutate(itemToConfirm)
       setShowConfirmationModal(false)
       setItemToConfirm(null)
-      
+
       // Update localStorage to mark this item as paid
       try {
         const savedSchedule = localStorage.getItem('generated-payment-schedule')
         if (savedSchedule) {
           const schedule = JSON.parse(savedSchedule)
           // Mark the specific item as paid in the schedule
-          const updatedSchedule = schedule.map((item: GeneratedSchedule) => 
+          const updatedSchedule = schedule.map((item: GeneratedSchedule) =>
             item.date === itemToConfirm.date && item.companyId === itemToConfirm.companyId
               ? { ...item, isPaid: true }
               : item
@@ -449,8 +466,8 @@ const CompanyPaymentPlanner: React.FC = () => {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className={`rounded-xl p-6 shadow-sm border ${
-          theme === 'dark' 
-            ? 'bg-slate-800 border-slate-700' 
+          theme === 'dark'
+            ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center justify-between">
@@ -471,8 +488,8 @@ const CompanyPaymentPlanner: React.FC = () => {
         </div>
 
         <div className={`rounded-xl p-6 shadow-sm border ${
-          theme === 'dark' 
-            ? 'bg-slate-800 border-slate-700' 
+          theme === 'dark'
+            ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center justify-between">
@@ -493,8 +510,8 @@ const CompanyPaymentPlanner: React.FC = () => {
         </div>
 
         <div className={`rounded-xl p-6 shadow-sm border ${
-          theme === 'dark' 
-            ? 'bg-slate-800 border-slate-700' 
+          theme === 'dark'
+            ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center justify-between">
@@ -515,8 +532,8 @@ const CompanyPaymentPlanner: React.FC = () => {
         </div>
 
         <div className={`rounded-xl p-6 shadow-sm border ${
-          theme === 'dark' 
-            ? 'bg-slate-800 border-slate-700' 
+          theme === 'dark'
+            ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center justify-between">
@@ -540,14 +557,14 @@ const CompanyPaymentPlanner: React.FC = () => {
       {/* Generator Form */}
       {showGenerator && (
         <div className={`rounded-xl p-6 shadow-sm border ${
-          theme === 'dark' 
-            ? 'bg-slate-800 border-slate-700' 
+          theme === 'dark'
+            ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-slate-200'
         }`}>
           <h3 className={`text-lg font-semibold mb-4 ${
             theme === 'dark' ? 'text-white' : 'text-slate-800'
           }`}>{t('payment.generateSchedule')}</h3>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div>
               <label className={`block text-sm font-medium mb-2 ${
@@ -624,7 +641,7 @@ const CompanyPaymentPlanner: React.FC = () => {
               <Calculator size={18} />
               {t('payment.generateSchedule')}
             </button>
-            
+
             {generatedSchedule.length > 0 && (
               <button
                 onClick={() => saveSchedule.mutate()}
@@ -642,8 +659,8 @@ const CompanyPaymentPlanner: React.FC = () => {
       {/* Generated Schedule */}
       {generatedSchedule.length > 0 && (
         <div className={`rounded-xl p-6 shadow-sm border ${
-          theme === 'dark' 
-            ? 'bg-slate-800 border-slate-700' 
+          theme === 'dark'
+            ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center justify-between mb-4">
@@ -658,23 +675,23 @@ const CompanyPaymentPlanner: React.FC = () => {
               {t('buttons.clearSchedule')}
             </button>
           </div>
-          
+
           <div className="space-y-4">
             {Object.entries(scheduleByDate).map(([date, items]) => (
               <div key={date} className={`border rounded-lg p-4 ${
-                theme === 'dark' 
-                  ? 'border-slate-600 bg-slate-700' 
+                theme === 'dark'
+                  ? 'border-slate-600 bg-slate-700'
                   : 'border-slate-200 bg-white'
               }`}>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className={`font-medium ${
                     theme === 'dark' ? 'text-white' : 'text-slate-800'
                   }`}>
-                    {new Date(date).toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                    {new Date(date).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })}
                   </h4>
                   <span className={`text-sm font-medium ${
@@ -683,25 +700,25 @@ const CompanyPaymentPlanner: React.FC = () => {
                     {t('common.total')}: {items.reduce((sum, item) => sum + item.amount, 0).toFixed(3)} {t('currency.iqd')}
                   </span>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {items.map((item, index) => {
                     const itemKey = `${item.date}-${item.companyId}`
                     const isPaid = paidItems.has(itemKey) || item.isPaid
-                    
+
                     return (
-                      <div 
+                      <div
                         key={index}
                         className={`p-3 rounded-lg border ${
-                          isPaid 
+                          isPaid
                             ? theme === 'dark'
                               ? 'border-green-700 bg-green-900/20'
                               : 'border-green-200 bg-green-50'
-                            : item.isUrgent 
+                            : item.isUrgent
                               ? theme === 'dark'
                                 ? 'border-red-700 bg-red-900/20'
                                 : 'border-red-200 bg-red-50'
-                              : item.priority === 2 
+                              : item.priority === 2
                                 ? theme === 'dark'
                                   ? 'border-orange-700 bg-orange-900/20'
                                   : 'border-orange-200 bg-orange-50'
@@ -727,7 +744,7 @@ const CompanyPaymentPlanner: React.FC = () => {
                                 ? theme === 'dark'
                                   ? 'bg-green-900/30 text-green-300'
                                   : 'bg-green-100 text-green-800'
-                                : item.isUrgent 
+                                : item.isUrgent
                                   ? theme === 'dark'
                                     ? 'bg-red-900/30 text-red-300'
                                     : 'bg-red-100 text-red-800'
@@ -750,7 +767,7 @@ const CompanyPaymentPlanner: React.FC = () => {
                             )}
                           </div>
                         </div>
-                        
+
                         {!isPaid && (
                           <div className="mt-2 flex justify-end">
                             <button
@@ -775,14 +792,14 @@ const CompanyPaymentPlanner: React.FC = () => {
       {/* Existing Schedules */}
       {schedules.length > 0 && (
         <div className={`rounded-xl p-6 shadow-sm border ${
-          theme === 'dark' 
-            ? 'bg-slate-800 border-slate-700' 
+          theme === 'dark'
+            ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-slate-200'
         }`}>
           <h3 className={`text-lg font-semibold mb-4 ${
             theme === 'dark' ? 'text-white' : 'text-slate-800'
           }`}>{t('payment.existingSchedules')}</h3>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -808,7 +825,7 @@ const CompanyPaymentPlanner: React.FC = () => {
                     </td>
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        schedule.is_paid 
+                        schedule.is_paid
                           ? 'bg-green-100 text-green-800'
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
@@ -853,18 +870,18 @@ const CompanyPaymentPlanner: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-slate-600">{t('navigation.companies')}:</p>
                 <p className="font-medium text-slate-800">{selectedSchedule.entity_name}</p>
               </div>
-              
+
               <div>
                 <p className="text-sm text-slate-600">{t('payment.scheduledAmount')}:</p>
                 <p className="font-medium text-slate-800">{parseFloat(selectedSchedule.scheduled_amount).toFixed(3)} {t('currency.iqd')}</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   {t('payment.actualAmount')} *
@@ -879,7 +896,7 @@ const CompanyPaymentPlanner: React.FC = () => {
                   autoFocus
                 />
               </div>
-              
+
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => setShowPaymentModal(false)}
