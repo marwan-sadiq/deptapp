@@ -19,7 +19,7 @@ const addCacheBusting = (url: string) => {
 const apiBaseUrl = getApiBaseUrl()
 console.log('API Base URL:', apiBaseUrl)
 console.log('Current hostname:', window.location.hostname)
-console.log('Frontend Version: 1.0.3 - Cache Busting Enabled')
+console.log('Frontend Version: 1.0.4 - PWA Modal Removed - Cache Busting Enabled')
 
 export const api = axios.create({
   baseURL: apiBaseUrl,

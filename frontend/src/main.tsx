@@ -13,14 +13,15 @@ const queryClient = new QueryClient()
 // Register service worker for PWA
 registerSW({
   onNeedRefresh() {
-    // Show a notification to user that new version is available
-    if (confirm('New version available! Click OK to update.')) {
-      window.location.reload()
-    }
+    // Force update without asking user
+    console.log('New version available, forcing update...')
+    window.location.reload()
   },
   onOfflineReady() {
     console.log('App is ready to work offline!')
-  }
+  },
+  // Force immediate update
+  immediate: true
 })
 
 createRoot(document.getElementById('root')!).render(
