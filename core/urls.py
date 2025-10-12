@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (UserLoginView, UserLogoutView, UserProfileView, check_auth_status,
                           CustomerViewSet, CompanyViewSet, DebtViewSet, AuditLogViewSet,
                           PaymentPlanViewSet, PaymentScheduleViewSet, DailyBalanceViewSet,
-                          ShopMoneyViewSet, EntityActivityViewSet, generate_payment_plan, get_payment_schedule, 
+                          ShopMoneyViewSet, EntityActivityViewSet, CurrencyViewSet, generate_payment_plan, get_payment_schedule, 
                           mark_payment_completed, payment_analytics, update_all_reputations,
                           update_customer_reputation, check_customer_credit)
 
@@ -18,6 +18,7 @@ router.register(r'payment-plans', PaymentPlanViewSet)
 router.register(r'payment-schedules', PaymentScheduleViewSet)
 router.register(r'daily-balances', DailyBalanceViewSet)
 router.register(r'shop-money', ShopMoneyViewSet)
+router.register(r'currencies', CurrencyViewSet)
 
 
 urlpatterns = [

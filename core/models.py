@@ -27,6 +27,29 @@ class TimestampedModel(models.Model):
         abstract = True
 
 
+class Currency(TimestampedModel):
+    """Currency model for different currencies"""
+    CURRENCY_CHOICES = [
+        ('IQD', 'Iraqi Dinar'),
+        ('USD', 'US Dollar'),
+        ('EUR', 'Euro'),
+        ('GBP', 'British Pound'),
+    ]
+    
+    code = models.CharField(max_length=3, choices=CURRENCY_CHOICES, unique=True)
+    name = models.CharField(max_length=50)
+    symbol = models.CharField(max_length=5, default='$')
+    is_active = models.BooleanField(default=True)
+    exchange_rate_to_iqd = models.DecimalField(max_digits=10, decimal_places=4, default=1.0)
+    
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+    
+    class Meta:
+        ordering = ['code']
+        verbose_name_plural = 'Currencies'
+
+
 class Customer(TimestampedModel):
     REPUTATION_CHOICES = [
         ('excellent', 'Excellent'),
@@ -214,13 +237,14 @@ class Debt(TimestampedModel):
     customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.CASCADE, related_name='debts')
     company = models.ForeignKey('Company', null=True, blank=True, on_delete=models.CASCADE, related_name='debts')
     amount = models.DecimalField(max_digits=15, decimal_places=3)  # This is fine - keep it
+    currency = models.ForeignKey('Currency', on_delete=models.PROTECT, default=1)  # Default to IQD
     note = models.CharField(max_length=255, blank=True)
     is_settled = models.BooleanField(default=False)
     due_date = models.DateField(null=True, blank=True)
 
     def __str__(self) -> str:
         owner = self.customer.name if self.customer else (self.company.name if self.company else 'Unknown')
-        return f"Debt {self.amount} for {owner}"
+        return f"Debt {self.amount} {self.currency.code} for {owner}"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

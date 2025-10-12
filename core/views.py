@@ -12,11 +12,11 @@ from django.utils import timezone
 from decimal import Decimal
 from datetime import datetime, timedelta
 import logging
-from .models import UserProfile, Customer, Company, Debt, AuditLog, PaymentPlan, PaymentSchedule, DailyBalance, ShopMoney, EntityActivity
+from .models import UserProfile, Customer, Company, Debt, AuditLog, PaymentPlan, PaymentSchedule, DailyBalance, ShopMoney, EntityActivity, Currency
 from .serializers import (UserLoginSerializer, UserProfileSerializer, UserUpdateSerializer,
                          CustomerSerializer, CompanySerializer, DebtSerializer, AuditLogSerializer,
                          PaymentPlanSerializer, PaymentScheduleSerializer, DailyBalanceSerializer,
-                         PaymentPlanGenerationSerializer, ShopMoneySerializer, EntityActivitySerializer)
+                         PaymentPlanGenerationSerializer, ShopMoneySerializer, EntityActivitySerializer, CurrencySerializer)
 from .payment_algorithm import PaymentPlanner
 
 
@@ -719,6 +719,16 @@ def check_customer_credit(request, customer_id):
         })
     except Customer.DoesNotExist:
         return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for currencies - read-only for frontend"""
+    queryset = Currency.objects.filter(is_active=True)
+    serializer_class = CurrencySerializer
+    permission_classes = []  # Make currencies public - no authentication required
+    
+    def get_queryset(self):
+        return Currency.objects.filter(is_active=True).order_by('code')
 
 
 class EntityActivityViewSet(viewsets.ReadOnlyModelViewSet):

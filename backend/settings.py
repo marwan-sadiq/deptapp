@@ -24,9 +24,9 @@ import os
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-ga=x52qi+ea1@y8b%(b*-)g_q44ai=rz0x4n4yut@@+l1mg&v=')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')
 
 
 # Application definition
@@ -156,8 +156,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour'
+        'anon': '1000/hour',  # Increased from 100/hour for development
+        'user': '10000/hour'  # Increased from 1000/hour for development
     }
 }
 
@@ -203,8 +203,8 @@ LOGIN_URL = '/login/'
 
 # Rate Limiting for Login
 REST_FRAMEWORK_THROTTLE_RATES = {
-    'login': '5/min',
-    'register': '3/min',
+    'login': '50/min',     # Increased from 5/min for development
+    'register': '20/min',  # Increased from 3/min for development
 }
 
 # Cache Configuration for Security

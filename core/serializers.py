@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import User
-from .models import UserProfile, Customer, Company, Debt, AuditLog, PaymentPlan, PaymentSchedule, DailyBalance, ShopMoney, EntityActivity
+from .models import UserProfile, Customer, Company, Debt, AuditLog, PaymentPlan, PaymentSchedule, DailyBalance, ShopMoney, EntityActivity, Currency
 
 
 
@@ -66,6 +66,14 @@ class UserLoginSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+
+
+class CurrencySerializer(serializers.ModelSerializer):
+    """Serializer for currency"""
+    class Meta:
+        model = Currency
+        fields = ['id', 'code', 'name', 'symbol', 'is_active', 'exchange_rate_to_iqd', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -137,10 +145,11 @@ class CompanySerializer(serializers.ModelSerializer):
 
 class DebtSerializer(serializers.ModelSerializer):
     override = serializers.BooleanField(write_only=True, required=False, allow_null=True)
+    currency_code = serializers.CharField(source='currency.code', read_only=True)
 
     class Meta:
         model = Debt
-        fields = ["id", "customer", "company", "amount", "note", "is_settled", "due_date", "override", "created_at", "updated_at"]
+        fields = ["id", "customer", "company", "amount", "currency", "currency_code", "note", "is_settled", "due_date", "override", "created_at", "updated_at"]
 
     def validate(self, data):
         customer = data.get('customer')

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from .models import UserProfile, Customer, Company, Debt, AuditLog, PaymentPlan, PaymentSchedule, DailyBalance, ShopMoney
+from .models import UserProfile, Customer, Company, Debt, AuditLog, PaymentPlan, PaymentSchedule, DailyBalance, ShopMoney, Currency
 
 
 # User Profile Admin
@@ -49,10 +49,18 @@ class CompanyAdmin(admin.ModelAdmin):
     readonly_fields = ("total_debt",)
 
 
+@admin.register(Currency)
+class CurrencyAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'symbol', 'exchange_rate_to_iqd', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('code', 'name')
+    readonly_fields = ('created_at', 'updated_at')
+
+
 @admin.register(Debt)
 class DebtAdmin(admin.ModelAdmin):
-    list_display = ("id", "amount", "customer", "company", "is_settled", "created_at")
-    list_filter = ("is_settled",)
+    list_display = ("id", "amount", "currency", "customer", "company", "is_settled", "created_at")
+    list_filter = ("is_settled", "currency")
 
 
 @admin.register(AuditLog)
