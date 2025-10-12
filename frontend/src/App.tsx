@@ -182,22 +182,35 @@ function Dashboard() {
     return t(`currency.${currencyKey}`) || code
   }, [t])
 
-  // Calculate debt totals from customer/company data (user-specific)
-  const calculateDebtTotals = (entities: any[]) => {
+  // Fetch all debts to calculate proper currency totals (user-specific)
+  const { data: allDebtsData } = useQuery({
+    queryKey: ['all-debts'],
+    queryFn: async () => {
+      const response = await api.get('debts/')
+      return response.data.results || response.data
+    },
+    enabled: !!custData && !!compData
+  })
+
+  const allDebts = allDebtsData || []
+
+  // Calculate debt totals by currency from actual debt records
+  const calculateDebtTotals = (debts: any[]) => {
     const totals: { [key: string]: number } = {}
-    entities.forEach((entity: any) => {
-      const debt = parseFloat(entity.total_debt || '0') || 0
-      if (debt > 0) {
-        // For now, assume all debts are in IQD since we don't have currency info in entity totals
-        // TODO: Add currency support to entity total_debt fields
-        totals['IQD'] = (totals['IQD'] || 0) + debt
-      }
+    debts.forEach((debt: any) => {
+      const amount = parseFloat(debt.amount || '0') || 0
+      const currency = debt.currency_code || 'IQD'
+      totals[currency] = (totals[currency] || 0) + amount
     })
     return totals
   }
 
-  const customerDebtTotals = calculateDebtTotals(customers)
-  const companyDebtTotals = calculateDebtTotals(companies)
+  // Filter debts by customer/company and calculate totals
+  const customerDebts = allDebts.filter((debt: any) => debt.customer && !debt.company)
+  const companyDebts = allDebts.filter((debt: any) => debt.company && !debt.customer)
+  
+  const customerDebtTotals = calculateDebtTotals(customerDebts)
+  const companyDebtTotals = calculateDebtTotals(companyDebts)
 
   // Format currency totals for display
   const formatCurrencyTotals = (totals: { [key: string]: number }) => {
