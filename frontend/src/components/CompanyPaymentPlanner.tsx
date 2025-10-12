@@ -352,33 +352,50 @@ const CompanyPaymentPlanner: React.FC = () => {
 
 const createPaymentDebt = useMutation({
   mutationFn: async (item: GeneratedSchedule) => {
-    console.log('=== DEBUG INFO ===')
+    console.log('=== PAYMENT DEBUG ===')
     console.log('Item:', item)
+    console.log('Company ID:', item.companyId)
     console.log('Original amount:', item.amount)
-    console.log('Amount as number:', Number(item.amount))
 
+    // Calculate negative amount (payment reduces debt)
     const negativeAmount = -Math.abs(Number(item.amount))
     console.log('Negative amount:', negativeAmount)
 
+    // Format to 3 decimal places (IQD standard)
     const formattedAmount = negativeAmount.toFixed(3)
     console.log('Formatted amount:', formattedAmount)
-    console.log('String length:', formattedAmount.length)
-    console.log('Digit count (excluding signs/decimals):', formattedAmount.replace(/[-\.]/g, '').length)
 
+    // Build payload - IMPORTANT: only send company, not customer
     const payload = {
       company: item.companyId,
+      customer: null,  // Explicitly set to null
       amount: formattedAmount,
-      note: `Payment completed - Generated schedule: ${item.date}`,
-      override: true
+      note: `Payment completed - ${item.date}`,
+      override: true,  // Allow negative amounts
+      is_settled: false  // This is a payment, not settling the debt
     }
-    console.log('Final payload:', payload)
-    console.log('==================')
 
-    const response = await api.post('debts/', payload)
-    return response.data
+    console.log('Final payload:', JSON.stringify(payload, null, 2))
+    console.log('=====================')
+
+    try {
+      const response = await api.post('debts/', payload)
+      console.log('Success response:', response.data)
+      return response.data
+    } catch (error: any) {
+      console.error('API Error:', error.response?.data)
+      console.error('Status:', error.response?.status)
+      throw error
+    }
   },
   onSuccess: () => {
+    console.log('Payment debt created successfully')
     queryClient.invalidateQueries({ queryKey: ['companies'] })
+    queryClient.invalidateQueries({ queryKey: ['debts'] })
+  },
+  onError: (error: any) => {
+    console.error('Mutation error:', error)
+    alert(`Payment failed: ${error.response?.data?.detail || error.message}`)
   }
 })
   // Handle marking generated schedule item as paid
