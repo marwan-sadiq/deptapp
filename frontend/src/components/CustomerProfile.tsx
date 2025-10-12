@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, User, Phone, MapPin, DollarSign, TrendingUp, AlertCircle, CheckCircle, Clock, Plus, Printer } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -15,6 +15,12 @@ const CustomerProfile: React.FC = () => {
   const queryClient = useQueryClient()
   const { theme } = useTheme()
   const { t } = useLanguage()
+
+  // Function to get translated currency name
+  const getCurrencyTranslation = useCallback((code: string) => {
+    const currencyKey = code.toLowerCase()
+    return t(`currency.${currencyKey}`) || code
+  }, [t])
 
 
   // Fetch customer data
@@ -213,7 +219,7 @@ const CustomerProfile: React.FC = () => {
           ? 'bg-slate-800 border-slate-700' 
           : 'bg-white border-slate-200'
       }`}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
               theme === 'dark' ? 'bg-blue-900/30' : 'bg-blue-100'
@@ -285,7 +291,7 @@ const CustomerProfile: React.FC = () => {
         <div className={`mt-6 pt-6 border-t ${
           theme === 'dark' ? 'border-slate-700' : 'border-slate-200'
         }`}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
             <div>
               <p className={theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}>{t('customer.created')}</p>
               <p className={`font-medium ${
@@ -314,7 +320,7 @@ const CustomerProfile: React.FC = () => {
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className={`rounded-xl p-6 shadow-sm border ${
           theme === 'dark' 
             ? 'bg-slate-800 border-slate-700' 
@@ -464,7 +470,7 @@ const CustomerProfile: React.FC = () => {
                       ? theme === 'dark' ? 'text-red-400' : 'text-red-600'
                       : theme === 'dark' ? 'text-green-400' : 'text-green-600'
                   }`}>
-                    {parseFloat(debt.amount || '0') > 0 ? '+' : ''}{parseFloat(debt.amount || '0').toFixed(3)} {t('currency.iqd')}
+                    {parseFloat(debt.amount || '0') > 0 ? '+' : ''}{parseFloat(debt.amount || '0').toFixed(3)} {getCurrencyTranslation(debt.currency_code || 'IQD')}
                   </p>
                   {debt.due_date && (
                     <p className={`text-xs ${

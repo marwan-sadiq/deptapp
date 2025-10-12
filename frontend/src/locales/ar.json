@@ -226,7 +226,10 @@
     "paidInLast30Days": "مدفوع في آخر 30 يوم"
   },
   "currency": {
-    "iqd": "دينار"
+    "iqd": "د.ع",
+    "usd": "$",
+    "eur": "€",
+    "gbp": "£"
   },
   "common": {
     "required": "مطلوب",

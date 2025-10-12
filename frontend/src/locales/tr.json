@@ -226,7 +226,10 @@
     "paidInLast30Days": "Son 30 günde ödenen"
   },
   "currency": {
-    "iqd": "IQD"
+    "iqd": "د.ع",
+    "usd": "$",
+    "eur": "€",
+    "gbp": "£"
   },
   "common": {
     "required": "Gerekli",

@@ -1,10 +1,30 @@
 import React, { useState, memo, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import { useLanguage } from '../contexts/LanguageContext'
-import { type Customer, type Company } from '../api'
+import { api, type Customer, type Company, type Debt } from '../api'
 import DebtModal from './DebtModal'
 import ReputationTag from './ReputationTag'
+
+// Utility function to get primary currency from debts
+const getPrimaryCurrency = (debts: Debt[]): string => {
+  if (!debts || debts.length === 0) return 'IQD'
+  
+  // Count currency occurrences
+  const currencyCount: { [key: string]: number } = {}
+  debts.forEach(debt => {
+    const currency = debt.currency_code || 'IQD'
+    currencyCount[currency] = (currencyCount[currency] || 0) + 1
+  })
+  
+  // Return the most common currency
+  const primaryCurrency = Object.keys(currencyCount).reduce((a, b) => 
+    currencyCount[a] > currencyCount[b] ? a : b
+  )
+  
+  return primaryCurrency
+}
 
 interface EntityCardProps {
   entity: Customer | Company
@@ -32,6 +52,25 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
   const navigate = useNavigate()
   const { theme } = useTheme()
   const { t } = useLanguage()
+
+  // Fetch debts for this entity to determine primary currency
+  const { data: debtsData } = useQuery({
+    queryKey: ['debts', type, entity.id],
+    queryFn: async () => {
+      const response = await api.get(`debts/?${type}=${entity.id}`)
+      return response.data.results || response.data
+    },
+    enabled: !!entity.id
+  })
+
+  const debts = debtsData || []
+  const primaryCurrency = getPrimaryCurrency(debts)
+  
+  // Function to get translated currency name
+  const getCurrencyTranslation = useCallback((code: string) => {
+    const currencyKey = code.toLowerCase()
+    return t(`currency.${currencyKey}`) || code
+  }, [t])
 
   const handleAdjustDebt = useCallback((amount: string, note: string, isIncrease: boolean, override?: boolean) => {
     onAdjustDebt(amount, note, isIncrease, override)
@@ -211,14 +250,14 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
               </div>
             </div>
           </div>
-          <div className="text-right flex flex-col items-end">
+          <div className="text-right flex flex-col items-end sm:items-end">
             <div className={`px-4 py-2 rounded-lg ${
               theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'
             }`}>
               <p className={`text-lg font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-slate-800'
               }`}>
-                {parseFloat(entity.total_debt || '0').toFixed(3)} {t('currency.iqd')}
+                {parseFloat(entity.total_debt || '0').toFixed(3)} {getCurrencyTranslation(primaryCurrency)}
               </p>
               <p className={`text-xs ${
                 theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
@@ -226,7 +265,7 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
                 {t('customer.currentDebt')}
               </p>
             </div>
-            <div className="flex gap-2 mt-2 flex-wrap">
+            <div className="flex gap-2 mt-2 flex-wrap justify-end">
               <button
                 onClick={() => setShowModal(true)}
                 className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
@@ -289,7 +328,7 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
                 <p className={`text-lg font-bold ${
                   theme === 'dark' ? 'text-white' : 'text-slate-800'
                 }`}>
-                  {parseFloat(entity.total_debt || '0').toFixed(3)} {t('currency.iqd')}
+                  {parseFloat(entity.total_debt || '0').toFixed(3)} {getCurrencyTranslation(primaryCurrency)}
                 </p>
               </div>
               

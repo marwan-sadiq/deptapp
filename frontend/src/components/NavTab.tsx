@@ -24,7 +24,7 @@ const NavTab: React.FC<NavTabProps> = ({ to, icon, active, children }) => {
         }`}
       >
         {icon}
-        <span className="hidden sm:inline">{children}</span>
+        <span className="text-sm sm:text-base">{children}</span>
       </button>
     </Link>
   )

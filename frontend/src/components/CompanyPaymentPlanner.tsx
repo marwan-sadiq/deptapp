@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { DollarSign, Building, CheckCircle, AlertCircle, Calculator, Target, X } from 'lucide-react'
-import { api } from '../api'
+import { DollarSign, Building, CheckCircle, AlertCircle, Calculator, X } from 'lucide-react'
+import { api, testApiConnection } from '../api'
 import { useTheme } from '../contexts/ThemeContext'
 import { useLanguage } from '../contexts/LanguageContext'
 
@@ -40,7 +40,6 @@ interface GeneratedSchedule {
 const CompanyPaymentPlanner: React.FC = () => {
   const [showGenerator, setShowGenerator] = useState(false)
   const [generatedSchedule, setGeneratedSchedule] = useState<GeneratedSchedule[]>([])
-  const [shopMoney, setShopMoney] = useState('')
   const [safetyMargin, setSafetyMargin] = useState('20') // 20% safety margin
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -100,10 +99,9 @@ const CompanyPaymentPlanner: React.FC = () => {
 
   // Initialize form data
   useEffect(() => {
-    if (shopMoneyData?.current_money) {
-      setShopMoney(shopMoneyData.current_money)
-    }
-
+    // Test API connection on mount
+    testApiConnection()
+    
     // Set default date range (next 30 days)
     const today = new Date()
     const nextMonth = new Date(today)
@@ -124,16 +122,19 @@ const CompanyPaymentPlanner: React.FC = () => {
         localStorage.removeItem('generated-payment-schedule')
       }
     }
-  }, [shopMoneyData])
+  }, [])
 
-  // Calculate available money for payments
+  // Calculate available money for payments (with safety margin) - used in payment generation
   const availableMoney = currentShopMoney * (1 - parseFloat(safetyMargin) / 100)
-  const calculatedMaxDaily = availableMoney / 30 // Spread over 30 days
+  // Calculate daily budget based on actual date range - used in payment generation
+  const daysInRange = startDate && endDate ? Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) : 30
+  const calculatedMaxDaily = daysInRange > 0 ? availableMoney / daysInRange : 0
 
   console.log('Debug values:')
   console.log('currentShopMoney:', currentShopMoney)
   console.log('safetyMargin:', safetyMargin)
-  console.log('availableMoney:', availableMoney)
+  console.log('availableMoney (after safety margin):', availableMoney)
+  console.log('daysInRange:', daysInRange)
   console.log('calculatedMaxDaily:', calculatedMaxDaily)
 
 
@@ -143,6 +144,7 @@ const CompanyPaymentPlanner: React.FC = () => {
     console.log('startDate:', startDate)
     console.log('endDate:', endDate)
     console.log('companies:', companies)
+    console.log('currentShopMoney:', currentShopMoney)
 
     if (!startDate || !endDate) {
       console.log('Missing required fields')
@@ -191,60 +193,98 @@ const CompanyPaymentPlanner: React.FC = () => {
       currentDate.setDate(start.getDate() + i)
       const dateStr = currentDate.toISOString().split('T')[0]
 
-      let dailyRemaining = dailyBudget
-
-      // Pay companies in priority order
-      for (const company of companiesWithDebt) {
-        if (dailyRemaining <= 0) break
-
+      // Get companies that still have debt
+      const companiesWithRemainingDebt = companiesWithDebt.filter((company: any) => {
         const remainingDebt = remainingDebts.get(company.id) || 0
-        if (remainingDebt <= 0) continue
+        return remainingDebt > 0
+      })
 
-        // Calculate payment amount based on priority and remaining budget
-        let paymentAmount = 0
+      if (companiesWithRemainingDebt.length === 0) break
 
-        // Calculate how many days are left in the month
-        const daysLeftInMonth = daysDiff - i
+      // Calculate priority scores for proportional distribution
+      const companyScores = companiesWithRemainingDebt.map((company: any) => {
+        const remainingDebt = remainingDebts.get(company.id) || 0
+        let score = 0
 
-        if (company.priority === 1) { // Overdue - try to pay off completely
-          if (remainingDebt <= dailyRemaining) {
-            paymentAmount = remainingDebt // Pay off completely
-          } else {
-            paymentAmount = Math.min(remainingDebt, dailyRemaining * 0.8) // 80% of daily budget
+        // Base score from debt amount (logarithmic to balance large vs small debts)
+        const debtScore = Math.log10(Math.max(remainingDebt, 1)) + 1
+
+        // Priority multiplier
+        let priorityMultiplier = 1
+        if (company.priority === 1) priorityMultiplier = 4.0      // Overdue - highest priority
+        else if (company.priority === 2) priorityMultiplier = 3.0  // Urgent (≤7 days)
+        else if (company.priority === 3) priorityMultiplier = 2.0  // Normal (≤30 days)
+        else priorityMultiplier = 1.0                              // Low priority
+
+        // Urgency bonus for companies due soon
+        const urgencyBonus = company.isUrgent ? 1.5 : 1.0
+
+        score = debtScore * priorityMultiplier * urgencyBonus
+        return { company, score, remainingDebt }
+      })
+
+      // Sort by score (highest first)
+      companyScores.sort((a: any, b: any) => b.score - a.score)
+
+      // Target 7-10 companies per day, but don't exceed available companies
+      const targetCompaniesPerDay = Math.min(8, companiesWithRemainingDebt.length)
+      const selectedCompanies = companyScores.slice(0, targetCompaniesPerDay)
+
+      // Calculate total score for proportional distribution
+      const totalScore = selectedCompanies.reduce((sum: any, item: any) => sum + item.score, 0)
+
+      if (totalScore > 0) {
+        console.log(`Day ${i + 1} (${dateStr}): Paying ${selectedCompanies.length} companies out of ${companiesWithRemainingDebt.length} available`)
+        
+        // Distribute daily budget proportionally among selected companies
+        for (const { company, score, remainingDebt } of selectedCompanies) {
+          // Calculate proportional share
+          const proportion = score / totalScore
+          let paymentAmount = dailyBudget * proportion
+
+          // Don't pay more than remaining debt
+          paymentAmount = Math.min(paymentAmount, remainingDebt)
+
+          // Ensure minimum payment of 50 IQD if we're paying this company
+          if (paymentAmount < 50 && remainingDebt >= 50) {
+            paymentAmount = 50
           }
-        } else if (company.priority === 2) { // Urgent (≤7 days)
-          if (remainingDebt <= dailyRemaining * 0.9) {
-            paymentAmount = remainingDebt // Pay off completely if reasonable
-          } else {
-            paymentAmount = Math.min(remainingDebt, dailyRemaining * 0.6) // 60% of daily budget
+
+          // Round to 3 decimal places
+          paymentAmount = Math.round(paymentAmount * 1000) / 1000
+
+          if (paymentAmount > 0) {
+            schedule.push({
+              date: dateStr,
+              companyId: company.id,
+              companyName: company.name,
+              amount: paymentAmount,
+              priority: company.priority,
+              daysLeft: company.daysLeft,
+              isUrgent: company.isUrgent
+            })
+
+            // Update remaining debt
+            const newRemainingDebt = remainingDebt - paymentAmount
+            remainingDebts.set(company.id, newRemainingDebt)
           }
-        } else if (company.priority === 3) { // Normal (≤30 days)
-          // Distribute remaining debt over remaining days
-          const targetDailyPayment = remainingDebt / Math.max(daysLeftInMonth, 1)
-          paymentAmount = Math.min(remainingDebt, Math.max(targetDailyPayment, dailyRemaining * 0.4))
-        } else { // Low priority
-          // Distribute remaining debt over remaining days
-          const targetDailyPayment = remainingDebt / Math.max(daysLeftInMonth, 1)
-          paymentAmount = Math.min(remainingDebt, Math.max(targetDailyPayment, dailyRemaining * 0.2))
-        }
-
-        if (paymentAmount > 0) {
-          schedule.push({
-            date: dateStr,
-            companyId: company.id,
-            companyName: company.name,
-            amount: paymentAmount,
-            priority: company.priority,
-            daysLeft: company.daysLeft,
-            isUrgent: company.isUrgent
-          })
-
-          remainingDebts.set(company.id, remainingDebt - paymentAmount)
-          dailyRemaining -= paymentAmount
         }
       }
     }
 
+    // Group by date to show distribution
+    const scheduleByDate = schedule.reduce((acc, item) => {
+      if (!acc[item.date]) acc[item.date] = []
+      acc[item.date].push(item)
+      return acc
+    }, {} as {[key: string]: GeneratedSchedule[]})
+
+    console.log('Generated schedule summary:')
+    Object.entries(scheduleByDate).forEach(([date, items]) => {
+      const totalAmount = items.reduce((sum, item) => sum + item.amount, 0)
+      console.log(`${date}: ${items.length} companies, total: ${totalAmount.toFixed(3)} IQD`)
+    })
+    
     console.log('Generated schedule:', schedule)
     console.log('Schedule length:', schedule.length)
     setGeneratedSchedule(schedule)
@@ -321,11 +361,17 @@ const CompanyPaymentPlanner: React.FC = () => {
           })
         }
       }
+
+      // Update shop money by deducting the payment amount
+      const amount = parseFloat(actualAmount)
+      await updateShopMoney.mutateAsync(amount)
+      console.log('Shop money updated for payment schedule')
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payment-schedules'] })
       queryClient.invalidateQueries({ queryKey: ['companies'] })
       queryClient.invalidateQueries({ queryKey: ['payment-plans'] })
+      queryClient.invalidateQueries({ queryKey: ['shop-money'] })
     }
   })
 
@@ -348,8 +394,38 @@ const CompanyPaymentPlanner: React.FC = () => {
     }
   }
 
-  // Create payment debt mutation for generated schedule items
+  // Update shop money when payment is completed
+  const updateShopMoney = useMutation({
+    mutationFn: async (amount: number) => {
+      console.log('=== SHOP MONEY UPDATE DEBUG ===')
+      console.log('Amount to deduct:', amount)
+      console.log('Current shop money:', shopMoneyData?.current_money)
+      
+      const currentShopMoney = parseFloat(shopMoneyData?.current_money || '0')
+      const newAmount = currentShopMoney - amount
+      
+      console.log('New shop money amount:', newAmount)
+      console.log('API base URL:', api.defaults.baseURL)
+      
+      const response = await api.post('shop-money/', {
+        current_money: newAmount.toFixed(2)
+      })
+      
+      console.log('Shop money update response:', response.data)
+      console.log('================================')
+      return response.data
+    },
+    onSuccess: () => {
+      console.log('Shop money updated successfully')
+      queryClient.invalidateQueries({ queryKey: ['shop-money'] })
+    },
+    onError: (error: any) => {
+      console.error('Shop money update failed:', error)
+      console.error('Error response:', error.response?.data)
+    }
+  })
 
+  // Create payment debt mutation for generated schedule items
 const createPaymentDebt = useMutation({
   mutationFn: async (item: GeneratedSchedule) => {
     console.log('=== PAYMENT DEBUG ===')
@@ -380,8 +456,15 @@ const createPaymentDebt = useMutation({
     console.log('=====================')
 
     try {
+      console.log('Creating debt entry with payload:', payload)
       const response = await api.post('debts/', payload)
-      console.log('Success response:', response.data)
+      console.log('Debt creation success response:', response.data)
+      
+      // Update shop money by deducting the payment amount
+      console.log('Now updating shop money...')
+      await updateShopMoney.mutateAsync(roundedAmount)
+      console.log('Shop money updated successfully')
+      
       return response.data
     } catch (error: any) {
       console.error('API Error:', error.response?.data)
@@ -394,6 +477,7 @@ const createPaymentDebt = useMutation({
     console.log('Payment debt created successfully')
     queryClient.invalidateQueries({ queryKey: ['companies'] })
     queryClient.invalidateQueries({ queryKey: ['debts'] })
+    queryClient.invalidateQueries({ queryKey: ['shop-money'] })
   },
   onError: (error: any) => {
     console.error('Mutation error:', error)
@@ -461,31 +545,22 @@ const createPaymentDebt = useMutation({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white">
-            <Building size={24} />
-          </div>
-          <div>
-            <h2 className={`text-xl sm:text-2xl font-bold ${
-              theme === 'dark' ? 'text-white' : 'text-slate-800'
-            }`}>{t('payment.title')}</h2>
-            <p className={`text-sm sm:text-base ${
-              theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
-            }`}>{t('payment.subtitle')}</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white">
+          <Building size={24} />
         </div>
-        <button
-          onClick={() => setShowGenerator(!showGenerator)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <Calculator size={18} />
-          {showGenerator ? t('payment.hideGenerator') : t('payment.generateSchedule')}
-        </button>
+        <div>
+          <h2 className={`text-xl sm:text-2xl font-bold ${
+            theme === 'dark' ? 'text-white' : 'text-slate-800'
+          }`}>{t('payment.title')}</h2>
+          <p className={`text-sm sm:text-base ${
+            theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+          }`}>{t('payment.subtitle')}</p>
+        </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className={`rounded-xl p-6 shadow-sm border ${
           theme === 'dark'
             ? 'bg-slate-800 border-slate-700'
@@ -517,37 +592,15 @@ const createPaymentDebt = useMutation({
             <div>
               <p className={`text-sm font-medium ${
                 theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
-              }`}>{t('payment.availableMoney')}</p>
+              }`}>{t('payment.shopMoney')}</p>
               <p className={`text-2xl font-bold ${
                 theme === 'dark' ? 'text-green-300' : 'text-green-900'
-              }`}>{availableMoney.toFixed(3)} {t('currency.iqd')}</p>
+              }`}>{currentShopMoney.toFixed(3)} {t('currency.iqd')}</p>
             </div>
             <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
               theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100'
             }`}>
               <DollarSign size={24} className="text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className={`rounded-xl p-6 shadow-sm border ${
-          theme === 'dark'
-            ? 'bg-slate-800 border-slate-700'
-            : 'bg-white border-slate-200'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
-              }`}>{t('payment.dailyBudget')}</p>
-              <p className={`text-2xl font-bold ${
-                theme === 'dark' ? 'text-purple-300' : 'text-purple-900'
-              }`}>{startDate && endDate ? (availableMoney / Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))).toFixed(3) : '0.000'} {t('currency.iqd')}</p>
-            </div>
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              theme === 'dark' ? 'bg-purple-900/30' : 'bg-purple-100'
-            }`}>
-              <Target size={24} className="text-purple-600" />
             </div>
           </div>
         </div>
@@ -575,6 +628,17 @@ const createPaymentDebt = useMutation({
         </div>
       </div>
 
+      {/* Generate Button */}
+      <div className="flex justify-center">
+        <button
+          onClick={() => setShowGenerator(!showGenerator)}
+          className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all duration-200 hover:scale-105 shadow-lg flex items-center gap-2"
+        >
+          <Calculator size={20} />
+          {showGenerator ? t('payment.hideGenerator') : t('payment.generateSchedule')}
+        </button>
+      </div>
+
       {/* Generator Form */}
       {showGenerator && (
         <div className={`rounded-xl p-6 shadow-sm border ${
@@ -591,18 +655,20 @@ const createPaymentDebt = useMutation({
               <label className={`block text-sm font-medium mb-2 ${
                 theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
               }`}>{t('payment.shopMoney')}</label>
-              <input
-                type="number"
-                step="0.001"
-                value={shopMoney}
-                onChange={(e) => setShopMoney(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                    : 'bg-white border-slate-300 text-slate-900'
-                }`}
-                placeholder="0.000"
-              />
+              <div className={`w-full px-3 py-2 border rounded-lg ${
+                theme === 'dark'
+                  ? 'bg-slate-700 border-slate-600 text-white'
+                  : 'bg-slate-100 border-slate-300 text-slate-900'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{currentShopMoney.toFixed(3)} {t('currency.iqd')}</span>
+                  <span className={`text-xs ${
+                    theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                  }`}>
+                    {t('payment.availableMoney')}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div>

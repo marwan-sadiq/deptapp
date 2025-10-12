@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { Plus, TrendingUp, Users, Building2, Search, X, CreditCard, Users2, Building, Calendar, Wallet, Filter, Moon, Sun, LogOut } from 'lucide-react'
@@ -48,64 +48,68 @@ function AppContent() {
         ? 'bg-slate-900' 
         : 'bg-slate-50'
     }`} dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="animate-fade-in">
-            <h1 className={`text-3xl sm:text-4xl font-display font-bold mb-2 transition-colors duration-200 ${
-              theme === 'dark' ? 'text-white' : 'text-slate-800'
-            }`}>
-              {t('app.title')}
-            </h1>
-            <p className={`text-sm sm:text-base font-sans transition-colors duration-200 ${
-              theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
-            }`}>
-              {t('app.subtitle')}
-            </p>
-          </div>
-          <div className="flex gap-2 items-center">
-            {/* User Info */}
-            <div className={`px-3 py-2 rounded-lg ${
-              theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'
-            }`}>
-              <p className={`text-sm font-medium ${
-                theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
-              }`}>
-                {t('auth.welcome')}, {user?.first_name || user?.username}
-              </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <header className="mb-6 sm:mb-8">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="animate-fade-in">
+                <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-display font-bold mb-2 transition-colors duration-200 ${
+                  theme === 'dark' ? 'text-white' : 'text-slate-800'
+                }`}>
+                  {t('app.title')}
+                </h1>
+                <p className={`text-sm sm:text-base font-sans transition-colors duration-200 ${
+                  theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+                }`}>
+                  {t('app.subtitle')}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
+                {/* User Info */}
+                <div className={`px-3 py-2 rounded-lg ${
+                  theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'
+                }`}>
+                  <p className={`text-xs sm:text-sm font-medium ${
+                    theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
+                  }`}>
+                    {t('auth.welcome')}, {user?.first_name || user?.username}
+                  </p>
+                </div>
+                
+                <LanguageSwitcher />
+                <button
+                  onClick={toggleTheme}
+                  className={`p-2 sm:p-3 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg ${
+                    theme === 'dark' 
+                      ? 'bg-slate-700 text-yellow-400 hover:bg-slate-600' 
+                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
+                  title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+                <button
+                  onClick={logout}
+                  className={`p-2 sm:p-3 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg ${
+                    theme === 'dark' 
+                      ? 'bg-red-700 text-red-200 hover:bg-red-600' 
+                      : 'bg-red-200 text-red-700 hover:bg-red-300'
+                  }`}
+                  title={t('auth.logout')}
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
             </div>
-            
-            <LanguageSwitcher />
-            <button
-              onClick={toggleTheme}
-              className={`p-3 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg ${
-                theme === 'dark' 
-                  ? 'bg-slate-700 text-yellow-400 hover:bg-slate-600' 
-                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-              }`}
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <button
-              onClick={logout}
-              className={`p-3 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg ${
-                theme === 'dark' 
-                  ? 'bg-red-700 text-red-200 hover:bg-red-600' 
-                  : 'bg-red-200 text-red-700 hover:bg-red-300'
-              }`}
-              title={t('auth.logout')}
-            >
-              <LogOut size={20} />
-            </button>
           </div>
         </header>
 
-        <nav className={`rounded-xl shadow-lg p-2 mb-8 sticky top-4 z-10 transition-all duration-200 ${
+        <nav className={`rounded-xl shadow-lg p-2 mb-6 sm:mb-8 sticky top-4 z-10 transition-all duration-200 ${
           theme === 'dark' 
             ? 'bg-slate-800 border border-slate-700' 
             : 'bg-white border border-slate-200'
         }`}>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2">
             <NavTab to="/" icon={<TrendingUp size={18} />} active={currentPath === 'dashboard'}>{t('navigation.dashboard')}</NavTab>
             <NavTab to="/customers" icon={<Users size={18} />} active={currentPath === 'customers'}>{t('navigation.customers')}</NavTab>
             <NavTab to="/companies" icon={<Building2 size={18} />} active={currentPath === 'companies'}>{t('navigation.companies')}</NavTab>
@@ -174,10 +178,54 @@ function Dashboard() {
   const customers = custData?.results || []
   const companies = compData?.results || []
 
-  const sumDebts = (items: any[]) => items.reduce((acc, x) => acc + (parseFloat(x.total_debt || '0') || 0), 0)
+  // Fetch all debts to calculate proper currency totals
+  const { data: allDebtsData } = useQuery({
+    queryKey: ['all-debts'],
+    queryFn: async () => {
+      const response = await api.get('debts/')
+      return response.data.results || response.data
+    },
+    enabled: !!custData && !!compData
+  })
+
+  const allDebts = allDebtsData || []
+
+  // Helper function to get currency translation
+  const getCurrencyTranslation = useCallback((code: string) => {
+    const currencyKey = code.toLowerCase()
+    return t(`currency.${currencyKey}`) || code
+  }, [t])
+
+  // Calculate debt totals by currency
+  const calculateDebtTotals = (debts: any[]) => {
+    const totals: { [key: string]: number } = {}
+    debts.forEach((debt: any) => {
+      const amount = parseFloat(debt.amount || '0') || 0
+      const currency = debt.currency_code || 'IQD'
+      totals[currency] = (totals[currency] || 0) + amount
+    })
+    return totals
+  }
+
+  const customerDebts = allDebts.filter((debt: any) => debt.customer && !debt.company)
+  const companyDebts = allDebts.filter((debt: any) => debt.company && !debt.customer)
   
-  const customerDebtTotal = sumDebts(customers)
-  const companyDebtTotal = sumDebts(companies)
+  const customerDebtTotals = calculateDebtTotals(customerDebts)
+  const companyDebtTotals = calculateDebtTotals(companyDebts)
+
+  // Format currency totals for display
+  const formatCurrencyTotals = (totals: { [key: string]: number }) => {
+    const currencies = Object.keys(totals).sort()
+    if (currencies.length === 0) return '0 IQD'
+    if (currencies.length === 1) {
+      const currency = currencies[0]
+      return `${totals[currency].toFixed(3)} ${getCurrencyTranslation(currency)}`
+    }
+    // Multiple currencies - show as "USD: 100, IQD: 200"
+    return currencies.map(currency => 
+      `${totals[currency].toFixed(3)} ${getCurrencyTranslation(currency)}`
+    ).join(', ')
+  }
 
   const totalShopMoney = parseFloat(shopData?.current_money || '0')
 
@@ -229,43 +277,43 @@ function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Shop Money Section */}
-      <div className={`rounded-2xl p-8 shadow-xl border ${
+      <div className={`rounded-2xl p-4 sm:p-6 lg:p-8 shadow-xl border ${
         theme === 'dark' 
           ? 'bg-slate-800 border-slate-700' 
           : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'
       }`}>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-lg ${
               theme === 'dark' 
                 ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' 
                 : 'bg-green-900 text-white'
             }`}>
-              <Wallet size={28} />
+              <Wallet size={24} />
             </div>
             <div>
-              <h3 className={`text-2xl font-display font-bold ${
+              <h3 className={`text-xl sm:text-2xl font-display font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-slate-800'
               }`}>
                 {t('shopMoney.title')}
               </h3>
-              <p className={`text-base font-sans ${
+              <p className={`text-sm sm:text-base font-sans ${
                 theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
               }`}>
                 {t('shopMoney.subtitle')}
               </p>
             </div>
           </div>
-          <div className={`px-8 py-4 rounded-xl shadow-sm ${
+          <div className={`px-4 sm:px-6 lg:px-8 py-3 sm:py-4 rounded-xl shadow-sm w-full sm:w-auto ${
             theme === 'dark' ? 'bg-green-900/20' : 'bg-gradient-to-br from-green-50 to-green-100'
           }`}>
             <div className="text-center">
-              <p className={`text-4xl font-display font-bold ${
+              <p className={`text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-display font-bold ${
                 theme === 'dark' ? 'text-green-300' : 'text-green-800'
               }`}>
                 {totalShopMoney.toFixed(3)} {t('currency.iqd')}
               </p>
-              <p className={`text-sm font-sans font-medium ${
+              <p className={`text-xs sm:text-sm font-sans font-medium ${
                 theme === 'dark' ? 'text-green-400' : 'text-green-600'
               }`}>
                 {t('shopMoney.currentAmount')}
@@ -277,17 +325,17 @@ function Dashboard() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         <StatCard 
           title={t('dashboard.customerDebt')} 
-          value={`${customerDebtTotal.toFixed(3)} ${t('currency.iqd')}`} 
+          value={formatCurrencyTotals(customerDebtTotals)} 
           subtitle={`${customersWithDebt} ${t('dashboard.withDebt')}`} 
           color="orange" 
           icon={<Users2 size={24} />}
         />
         <StatCard 
           title={t('dashboard.companyDebt')} 
-          value={`${companyDebtTotal.toFixed(3)} ${t('currency.iqd')}`} 
+          value={formatCurrencyTotals(companyDebtTotals)} 
           subtitle={`${companiesWithDebt} ${t('dashboard.withDebt')}`} 
           color="purple" 
           icon={<Building size={24} />}
@@ -302,7 +350,7 @@ function Dashboard() {
       </div>
 
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
         <TopDebtors title={t('dashboard.topCustomerDebts')} items={customers} type="customer" />
         <TopDebtors title={t('dashboard.topCompanyDebts')} items={companies} type="company" />
       </div>
@@ -445,7 +493,7 @@ function CustomersPage() {
   }
 
   const createCustomer = useMutation({
-    mutationFn: async (args: { customer: Partial<Customer>; initialAmount?: string; note?: string; dueDays?: string }) => {
+    mutationFn: async (args: { customer: Partial<Customer>; initialAmount?: string; note?: string; dueDays?: string; currency?: number }) => {
       const res = await api.post('customers/', args.customer)
       const newCustomer: Customer = res.data
       if (args.initialAmount && parseFloat(args.initialAmount) > 0) {
@@ -460,7 +508,15 @@ function CustomersPage() {
           }
         }
         
-        await api.post('debts/', { customer: newCustomer.id, company: null, amount: args.initialAmount, note: args.note || '', due_date: dueDate, override: false })
+        await api.post('debts/', { 
+          customer: newCustomer.id, 
+          company: null, 
+          amount: args.initialAmount, 
+          currency: args.currency || 1, // Default to IQD (ID 1)
+          note: args.note || '', 
+          due_date: dueDate, 
+          override: false 
+        })
         // Invalidate queries after creating debt to refresh the customer's total_debt
         qc.invalidateQueries({ queryKey: ['customers'] })
       }
@@ -660,6 +716,11 @@ function CustomersPage() {
             onSubmit={(data) => createCustomer.mutate(data)}
             buttonText="Add Customer"
             entityType="customer"
+            isLoading={createCustomer.isPending}
+            error={(createCustomer.error as any)?.response?.data?.name?.[0] || 
+                   (createCustomer.error as any)?.response?.data?.phone?.[0] || 
+                   (createCustomer.error as any)?.response?.data?.detail || 
+                   createCustomer.error?.message}
           />
         </div>
       )}
@@ -808,7 +869,7 @@ function CompaniesPage() {
   })
 
   const createCompany = useMutation({
-    mutationFn: async (args: { company: Partial<Company>; initialAmount?: string; note?: string; dueDays?: string }) => {
+    mutationFn: async (args: { company: Partial<Company>; initialAmount?: string; note?: string; dueDays?: string; currency?: number }) => {
       console.log('Creating company with args:', args)
       const res = await api.post('companies/', args.company)
       console.log('Company created successfully:', res.data)
@@ -825,8 +886,16 @@ function CompaniesPage() {
           }
         }
         
-        console.log('Creating initial debt for company:', { company: newCompany.id, amount: args.initialAmount, note: args.note, due_date: dueDate })
-        await api.post('debts/', { company: newCompany.id, customer: null, amount: args.initialAmount, note: args.note || '', due_date: dueDate, override: false })
+        console.log('Creating initial debt for company:', { company: newCompany.id, amount: args.initialAmount, currency: args.currency, due_date: dueDate })
+        await api.post('debts/', { 
+          company: newCompany.id, 
+          customer: null, 
+          amount: args.initialAmount, 
+          currency: args.currency || 1, // Default to IQD (ID 1)
+          note: args.note || '', 
+          due_date: dueDate, 
+          override: false 
+        })
       }
       return newCompany
     },
@@ -1005,6 +1074,11 @@ function CompaniesPage() {
             onSubmit={(data) => createCompany.mutate(data)}
             buttonText="Add Company"
             entityType="company"
+            isLoading={createCompany.isPending}
+            error={(createCompany.error as any)?.response?.data?.name?.[0] || 
+                   (createCompany.error as any)?.response?.data?.phone?.[0] || 
+                   (createCompany.error as any)?.response?.data?.detail || 
+                   createCompany.error?.message}
           />
         </div>
       )}

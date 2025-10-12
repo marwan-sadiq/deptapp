@@ -17,6 +17,9 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const useLanguage = () => {
   const context = useContext(LanguageContext)
   if (context === undefined) {
+    console.error('useLanguage must be used within a LanguageProvider')
+    console.error('Current context:', context)
+    console.error('Stack trace:', new Error().stack)
     throw new Error('useLanguage must be used within a LanguageProvider')
   }
   return context
@@ -29,7 +32,9 @@ interface LanguageProviderProps {
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem('shop-app-language')
-    return (saved as Language) || 'en'
+    const initialLanguage = (saved as Language) || 'en'
+    console.log('LanguageProvider initializing with language:', initialLanguage)
+    return initialLanguage
   })
 
   const setLanguage = (lang: Language) => {
@@ -271,7 +276,10 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
           paidInLast30Days: 'Paid in last 30 days'
         },
         currency: {
-          iqd: 'IQD'
+          iqd: 'IQD',
+          usd: '$',
+          eur: '€',
+          gbp: '£'
         },
       auth: {
         signIn: 'Sign In',
@@ -354,6 +362,8 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     t,
     isRTL
   }
+
+  console.log('LanguageProvider rendering with value:', value)
 
   return (
     <LanguageContext.Provider value={value}>

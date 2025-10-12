@@ -227,7 +227,10 @@
     "paidInLast30Days": "پارەدراو لە ٣٠ ڕۆژی کۆتاییدا"
   },
   "currency": {
-    "iqd": "دینار"
+    "iqd": "د.ع",
+    "usd": "$",
+    "eur": "€",
+    "gbp": "£"
   },
   "common": {
     "required": "پێویستە",

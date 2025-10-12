@@ -1,8 +1,10 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { type Customer, type Company } from '../api'
+import { useQuery } from '@tanstack/react-query'
+import { type Customer, type Company, type Debt } from '../api'
 import { useTheme } from '../contexts/ThemeContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { api } from '../api'
 
 interface TopDebtorsProps {
   title: string
@@ -14,6 +16,37 @@ const TopDebtors: React.FC<TopDebtorsProps> = ({ title, items, type }) => {
   const navigate = useNavigate()
   const { theme } = useTheme()
   const { t } = useLanguage()
+
+  // Fetch all debts for all items at once
+  const { data: allDebtsData } = useQuery({
+    queryKey: ['all-debts', type],
+    queryFn: async () => {
+      const response = await api.get('debts/')
+      return response.data.results || response.data
+    }
+  })
+
+  const allDebts = allDebtsData || []
+
+  // Helper function to get primary currency from debts
+  const getPrimaryCurrency = useCallback((debts: Debt[]): string => {
+    if (!debts || debts.length === 0) return 'IQD'
+    const currencyCount: { [key: string]: number } = {}
+    debts.forEach(debt => {
+      const currency = debt.currency_code || 'IQD'
+      currencyCount[currency] = (currencyCount[currency] || 0) + 1
+    })
+    return Object.keys(currencyCount).reduce((a, b) => 
+      currencyCount[a] > currencyCount[b] ? a : b
+    )
+  }, [])
+
+  // Helper function to get currency translation
+  const getCurrencyTranslation = useCallback((code: string) => {
+    const currencyKey = code.toLowerCase()
+    return t(`currency.${currencyKey}`) || code
+  }, [t])
+
   const sorted = [...items]
     .sort((a, b) => parseFloat(b.total_debt || '0') - parseFloat(a.total_debt || '0'))
     .slice(0, 5)
@@ -34,6 +67,16 @@ const TopDebtors: React.FC<TopDebtorsProps> = ({ title, items, type }) => {
           }`}>{t('status.noData')}</p>
         ) : (
           sorted.map((item) => {
+            // Filter debts for this specific item
+            const debts = allDebts.filter((debt: any) => {
+              if (type === 'customer') {
+                return debt.customer === item.id && !debt.company
+              } else {
+                return debt.company === item.id && !debt.customer
+              }
+            })
+            const primaryCurrency = getPrimaryCurrency(debts)
+            
             const isOverdue = item.earliest_due_date && 
               Math.ceil((new Date(item.earliest_due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) < 0
             
@@ -118,7 +161,7 @@ const TopDebtors: React.FC<TopDebtorsProps> = ({ title, items, type }) => {
                <span className={`font-bold text-xl ${
                  theme === 'dark' ? 'text-blue-400' : 'text-blue-700'
                }`}>
-                 {parseFloat(item.total_debt || '0').toFixed(3)} {t('currency.iqd')}
+                 {parseFloat(item.total_debt || '0').toFixed(3)} {getCurrencyTranslation(primaryCurrency)}
                </span>
             </div>
             )
