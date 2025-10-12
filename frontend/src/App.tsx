@@ -19,7 +19,7 @@ import CompanyProfile from './components/CompanyProfile'
 import ErrorBoundary from './components/ErrorBoundary'
 import Login from './components/Login'
 // import ProtectedRoute from './components/ProtectedRoute'
-import PWAInstallPrompt from './components/PWAInstallPrompt'
+// import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 function AppContent() {
   const location = useLocation()
@@ -36,7 +36,6 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
           <Route path="*" element={<Login />} />
         </Routes>
-        <PWAInstallPrompt />
       </div>
     )
   }
@@ -125,7 +124,6 @@ function AppContent() {
           <Route path="/companies/:id" element={<CompanyProfile />} />
           <Route path="/payments" element={<CompanyPaymentPlanner />} />
         </Routes>
-        <PWAInstallPrompt />
       </div>
     </div>
   )
