@@ -183,7 +183,7 @@ function Dashboard() {
   }, [t])
 
   // Calculate debt totals from customer/company data (user-specific)
-  const calculateDebtTotals = (entities: any[], type: 'customer' | 'company') => {
+  const calculateDebtTotals = (entities: any[]) => {
     const totals: { [key: string]: number } = {}
     entities.forEach((entity: any) => {
       const debt = parseFloat(entity.total_debt || '0') || 0
@@ -196,8 +196,8 @@ function Dashboard() {
     return totals
   }
 
-  const customerDebtTotals = calculateDebtTotals(customers, 'customer')
-  const companyDebtTotals = calculateDebtTotals(companies, 'company')
+  const customerDebtTotals = calculateDebtTotals(customers)
+  const companyDebtTotals = calculateDebtTotals(companies)
 
   // Format currency totals for display
   const formatCurrencyTotals = (totals: { [key: string]: number }) => {
