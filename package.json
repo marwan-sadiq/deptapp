@@ -1,7 +1,7 @@
 {
   "name": "deptapp",
-  "version": "1.0.1",
-  "description": "Debt Management System",
+  "version": "1.0.2",
+  "description": "Debt Management System - Updated",
   "scripts": {
     "build": "cd frontend && npm install && npm run build && cd .. && node -e \"require('fs').cpSync('frontend/dist', 'dist', {recursive: true})\"",
     "dev": "cd frontend && npm run dev",
