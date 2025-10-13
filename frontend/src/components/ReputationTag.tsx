@@ -73,13 +73,13 @@ const ReputationTag: React.FC<ReputationTagProps> = ({ reputation, score, showSc
   const config = getReputationConfig()
 
   return (
-    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${config.bgColor} ${config.textColor} ${config.borderColor}`}>
-      <span className={config.iconColor}>
+    <div className={`inline-flex items-center gap-1 px-1.5 xs:px-2 py-0.5 xs:py-1 rounded-full text-xs xs:text-xs font-medium border ${config.bgColor} ${config.textColor} ${config.borderColor} flex-shrink-0`}>
+      <span className={`${config.iconColor} flex-shrink-0`}>
         {config.icon}
       </span>
-      <span>{config.label}</span>
+      <span className="truncate max-w-[60px] xs:max-w-none">{config.label}</span>
       {showScore && score !== undefined && (
-        <span className="ml-1 opacity-75">({score})</span>
+        <span className="ml-1 opacity-75 flex-shrink-0">({score})</span>
       )}
     </div>
   )

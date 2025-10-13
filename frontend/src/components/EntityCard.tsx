@@ -161,7 +161,7 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
               {entity.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mb-1">
                 <h3 
                   className={`text-lg font-display font-semibold cursor-pointer hover:text-blue-600 transition-colors break-words ${
                     theme === 'dark' ? 'text-white' : 'text-slate-800'
@@ -171,18 +171,20 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
                 >
                   {entity.name}
                 </h3>
-                {type === 'customer' && 'reputation' in entity && (
-                  <ReputationTag 
-                    reputation={entity.reputation} 
-                    score={entity.reputation_score}
-                    showScore={true}
-                  />
-                )}
-                {shouldShowOverdueWarning && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                    🔒 {t('debt.locked')}
-                  </span>
-                )}
+                <div className="flex items-center gap-1 xs:gap-2 flex-wrap">
+                  {type === 'customer' && 'reputation' in entity && (
+                    <ReputationTag 
+                      reputation={entity.reputation} 
+                      score={entity.reputation_score}
+                      showScore={true}
+                    />
+                  )}
+                  {shouldShowOverdueWarning && (
+                    <span className="inline-flex items-center gap-1 px-1.5 xs:px-2 py-0.5 xs:py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium flex-shrink-0">
+                      🔒 {t('debt.locked')}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className={`text-xs space-y-0.5 ${
                 theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
