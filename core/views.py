@@ -137,10 +137,17 @@ def check_auth_status(request):
     logger.info(f"check_auth_status called with query params: {request.query_params}")
     
     if request.user.is_authenticated:
-        return Response({
-            'authenticated': True,
-            'user': UserProfileSerializer(request.user).data
-        })
+        try:
+            logger.info("About to serialize user data")
+            user_data = UserProfileSerializer(request.user).data
+            logger.info("User data serialized successfully")
+            return Response({
+                'authenticated': True,
+                'user': user_data
+            })
+        except Exception as e:
+            logger.error(f"Error in check_auth_status: {str(e)}")
+            raise
     else:
         return Response({
             'authenticated': False,
