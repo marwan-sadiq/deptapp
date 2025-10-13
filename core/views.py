@@ -630,7 +630,11 @@ def get_payment_schedule(request):
     entity_id = request.query_params.get('entity_id')
     entity_type = request.query_params.get('entity_type')
     
-    queryset = PaymentSchedule.objects.all()
+    # Filter payment schedules by user - only show schedules for customers/companies owned by the current user
+    user = request.user
+    queryset = PaymentSchedule.objects.filter(
+        models.Q(payment_plan__customer__user=user) | models.Q(payment_plan__company__user=user)
+    )
     
     if start_date:
         queryset = queryset.filter(scheduled_date__gte=start_date)
@@ -714,7 +718,11 @@ def payment_analytics(request):
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
     
-    queryset = PaymentSchedule.objects.all()
+    # Filter payment schedules by user - only show schedules for customers/companies owned by the current user
+    user = request.user
+    queryset = PaymentSchedule.objects.filter(
+        models.Q(payment_plan__customer__user=user) | models.Q(payment_plan__company__user=user)
+    )
     if start_date:
         queryset = queryset.filter(scheduled_date__gte=start_date)
     if end_date:
