@@ -130,13 +130,18 @@ class UserProfileView(APIView):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def check_auth_status(request):
     """Check if user is authenticated"""
-    return Response({
-        'authenticated': True,
-        'user': UserProfileSerializer(request.user).data
-    })
+    if request.user.is_authenticated:
+        return Response({
+            'authenticated': True,
+            'user': UserProfileSerializer(request.user).data
+        })
+    else:
+        return Response({
+            'authenticated': False,
+            'user': None
+        })
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
