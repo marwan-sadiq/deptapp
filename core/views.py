@@ -481,11 +481,8 @@ class DailyBalanceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Filter daily balances by user - only show balances for customers/companies owned by the current user
-        user = self.request.user
-        return DailyBalance.objects.filter(
-            models.Q(customer__user=user) | models.Q(company__user=user)
-        ).order_by('-date')
+        # DailyBalance is global, not user-specific - show all balances
+        return DailyBalance.objects.all().order_by('-date')
 
 
 class ShopMoneyViewSet(viewsets.ModelViewSet):
