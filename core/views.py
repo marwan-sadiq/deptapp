@@ -471,7 +471,7 @@ class PaymentScheduleViewSet(viewsets.ModelViewSet):
         # Filter payment schedules by user - only show schedules for customers/companies owned by the current user
         user = self.request.user
         return PaymentSchedule.objects.filter(
-            models.Q(customer__user=user) | models.Q(company__user=user)
+            models.Q(payment_plan__customer__user=user) | models.Q(payment_plan__company__user=user)
         ).order_by('scheduled_date')
 
 
