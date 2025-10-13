@@ -174,6 +174,22 @@ class CustomerViewSet(viewsets.ModelViewSet):
             description=f"Customer profile created: {instance.name}",
         )
 
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        # Update reputation when customer is updated
+        instance.update_reputation()
+        AuditLog.objects.create(
+            action="update",
+            entity_type="customer",
+            entity_id=instance.id,
+            description=f"Customer {instance.name} updated",
+        )
+        # Create entity activity
+        EntityActivity.objects.create(
+            customer=instance,
+            activity_type='profile_updated',
+            description=f"Customer profile updated: {instance.name}",
+        )
 
     def perform_destroy(self, instance):
         AuditLog.objects.create(
@@ -222,6 +238,21 @@ class CompanyViewSet(viewsets.ModelViewSet):
             company=instance,
             activity_type='profile_created',
             description=f"Company profile created: {instance.name}",
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.objects.create(
+            action="update",
+            entity_type="company",
+            entity_id=instance.id,
+            description=f"Company {instance.name} updated",
+        )
+        # Create entity activity
+        EntityActivity.objects.create(
+            company=instance,
+            activity_type='profile_updated',
+            description=f"Company profile updated: {instance.name}",
         )
 
     def perform_destroy(self, instance):

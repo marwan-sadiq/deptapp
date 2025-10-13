@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import User
+from decimal import Decimal
 from .models import UserProfile, Customer, Company, Debt, AuditLog, PaymentPlan, PaymentSchedule, DailyBalance, ShopMoney, EntityActivity, Currency
 
 
@@ -124,10 +125,22 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ["id", "user", "name", "phone", "address", "created_at", "updated_at", "market_money", "total_debt",
                  "reputation", "reputation_score", "last_payment_date", "total_paid_30_days", "payment_streak_days", "earliest_due_date"]
-        read_only_fields = ["user"]
+        read_only_fields = ["user", "total_debt", "reputation", "reputation_score", "last_payment_date", "total_paid_30_days", "payment_streak_days"]
 
     def get_earliest_due_date(self, obj):
         return obj.get_earliest_due_date()
+
+    def validate_name(self, value):
+        """Validate customer name"""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Customer name is required')
+        return value.strip()
+
+    def validate_phone(self, value):
+        """Validate phone number"""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Phone number is required')
+        return value.strip()
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -137,10 +150,22 @@ class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = ["id", "user", "name", "phone", "address", "created_at", "updated_at", "market_money", "total_debt", "earliest_due_date"]
-        read_only_fields = ["user"]
+        read_only_fields = ["user", "total_debt"]
 
     def get_earliest_due_date(self, obj):
         return obj.get_earliest_due_date()
+
+    def validate_name(self, value):
+        """Validate company name"""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Company name is required')
+        return value.strip()
+
+    def validate_phone(self, value):
+        """Validate phone number"""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Phone number is required')
+        return value.strip()
 
 
 class DebtSerializer(serializers.ModelSerializer):
