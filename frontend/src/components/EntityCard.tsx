@@ -31,6 +31,7 @@ interface EntityCardProps {
   onAdjustDebt: (amount: string, note: string, isIncrease: boolean, override?: boolean) => void
   type: 'customer' | 'company'
   onDeleteEntity?: () => void
+  onEditEntity?: () => void
   debtError?: string | null
   isDebtLoading?: boolean
   isDebtSuccess?: boolean
@@ -42,6 +43,7 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
   onAdjustDebt, 
   type,
   onDeleteEntity,
+  onEditEntity,
   debtError,
   isDebtLoading = false,
   isDebtSuccess = false,
@@ -272,6 +274,14 @@ const EntityCard: React.FC<EntityCardProps> = memo(({
               >
                 {t('debt.adjustDebt')}
               </button>
+              {onEditEntity && (
+                <button
+                  onClick={onEditEntity}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
+                >
+                  {t('buttons.edit')}
+                </button>
+              )}
               {onDeleteEntity && (
                 <button
                   onClick={handleDeleteClick}

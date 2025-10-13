@@ -12,6 +12,7 @@ import StatCard from './components/StatCard'
 import TopDebtors from './components/TopDebtors'
 import EntityCard from './components/EntityCard'
 import EntityForm from './components/EntityForm'
+import EntityEditModal from './components/EntityEditModal'
 import CompanyPaymentPlanner from './components/CompanyPaymentPlanner'
 import ShopMoneyInput from './components/ShopMoneyInput'
 import CustomerProfile from './components/CustomerProfile'
@@ -363,6 +364,7 @@ function CustomersPage() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [filters, setFilters] = useState({
     debtRange: 'all', // all, no-debt, low, medium, high
     reputation: 'all', // all, excellent, good, fair, poor, bad
@@ -534,11 +536,31 @@ function CustomersPage() {
     }
   })
 
+  const editCustomer = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Customer> }) => {
+      return (await api.put(`customers/${id}/`, data)).data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customers'] })
+      setEditingCustomer(null)
+    }
+  })
+
 
   // const deleteDebt = useMutation({
   //   mutationFn: (id: number) => api.delete(`debts/${id}/`),
   //   onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
   // })
+
+  const handleEditCustomer = (customer: Customer) => {
+    setEditingCustomer(customer)
+  }
+
+  const handleSaveCustomer = (data: Partial<Customer>) => {
+    if (editingCustomer) {
+      editCustomer.mutate({ id: editingCustomer.id, data })
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -732,6 +754,7 @@ function CustomersPage() {
              onAdjustDebt={(amount, note, isIncrease, override) => adjustDebt.mutate({ entityId: c.id, type: 'customer', amount, note, isIncrease, override: override || false })}
              type="customer"
              onDeleteEntity={() => deleteCustomer.mutate(c.id)}
+             onEditEntity={() => handleEditCustomer(c)}
              debtError={adjustDebt.error?.response?.data?.amount?.[0] || adjustDebt.error?.response?.data?.detail || adjustDebt.error?.message}
              isDebtLoading={adjustDebt.isPending}
              isDebtSuccess={adjustDebt.isSuccess}
@@ -746,6 +769,19 @@ function CustomersPage() {
            </div>
          )}
        </div>
+
+       <EntityEditModal
+         isOpen={!!editingCustomer}
+         onClose={() => setEditingCustomer(null)}
+         onSave={handleSaveCustomer}
+         entity={editingCustomer}
+         type="customer"
+         isLoading={editCustomer.isPending}
+         error={editCustomer.error?.response?.data?.name?.[0] || 
+                editCustomer.error?.response?.data?.phone?.[0] || 
+                editCustomer.error?.response?.data?.detail || 
+                editCustomer.error?.message}
+       />
     </div>
   )
 }
@@ -754,6 +790,7 @@ function CompaniesPage() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null)
   const [filters, setFilters] = useState({
     debtRange: 'all', // all, no-debt, low, medium, high
     dueDate: 'all', // all, overdue, due-soon, no-due-date
@@ -920,6 +957,25 @@ function CompaniesPage() {
     }
   })
 
+  const editCompany = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Company> }) => {
+      return (await api.put(`companies/${id}/`, data)).data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['companies'] })
+      setEditingCompany(null)
+    }
+  })
+
+  const handleEditCompany = (company: Company) => {
+    setEditingCompany(company)
+  }
+
+  const handleSaveCompany = (data: Partial<Company>) => {
+    if (editingCompany) {
+      editCompany.mutate({ id: editingCompany.id, data })
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -1093,6 +1149,7 @@ function CompaniesPage() {
              isDebtLoading={adjustDebt.isPending}
              isDebtSuccess={adjustDebt.isSuccess}
              onDeleteEntity={() => deleteCompany.mutate(c.id)}
+             onEditEntity={() => handleEditCompany(c)}
            />
          ))}
          {filtered.length === 0 && (
@@ -1103,6 +1160,19 @@ function CompaniesPage() {
            </div>
          )}
        </div>
+
+       <EntityEditModal
+         isOpen={!!editingCompany}
+         onClose={() => setEditingCompany(null)}
+         onSave={handleSaveCompany}
+         entity={editingCompany}
+         type="company"
+         isLoading={editCompany.isPending}
+         error={editCompany.error?.response?.data?.name?.[0] || 
+                editCompany.error?.response?.data?.phone?.[0] || 
+                editCompany.error?.response?.data?.detail || 
+                editCompany.error?.message}
+       />
     </div>
   )
 }
