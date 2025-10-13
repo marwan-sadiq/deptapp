@@ -132,6 +132,10 @@ class UserProfileView(APIView):
 @api_view(['GET'])
 def check_auth_status(request):
     """Check if user is authenticated"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"check_auth_status called with query params: {request.query_params}")
+    
     if request.user.is_authenticated:
         return Response({
             'authenticated': True,
@@ -467,6 +471,10 @@ class PaymentScheduleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"PaymentScheduleViewSet.get_queryset called with query params: {self.request.query_params}")
+        
         # Filter payment schedules by user - only show schedules for customers/companies owned by the current user
         user = self.request.user
         queryset = PaymentSchedule.objects.filter(
