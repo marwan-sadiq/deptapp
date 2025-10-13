@@ -45,6 +45,14 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   const isRTL = language === 'ku' || language === 'ar'
 
   const t = (key: string): string => {
+    // Fallback function for missing translations
+    const getFallback = (key: string): string => {
+      const keys = key.split('.')
+      const lastKey = keys[keys.length - 1]
+      // Return a readable version of the key as fallback
+      return lastKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()
+    }
+
     if (language === 'en') {
       // English translations as nested object
       const enTranslations = {
@@ -327,7 +335,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
       for (const k of keys) {
         value = value?.[k]
       }
-      return value || key
+      return value || getFallback(key)
     }
 
     // For other languages, use the translations
@@ -347,7 +355,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     for (const k of keys) {
       value = value?.[k]
     }
-    return value || key
+    return value || getFallback(key)
   }
 
   // Set document direction based on language

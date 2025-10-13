@@ -4,6 +4,7 @@
   --font-family-sans: Inter, system-ui, sans-serif;
   --font-family-display: Poppins, system-ui, sans-serif;
   --font-family-mono: JetBrains Mono, Consolas, monospace;
+  --font-family-arabic: 'Noto Sans Arabic', 'Amiri', 'Scheherazade New', 'Arial Unicode MS', 'Tahoma', sans-serif;
   
   --animate-fade-in: fadeIn 0.5s ease-in-out;
   --animate-slide-up: slideUp 0.3s ease-out;
@@ -104,6 +105,48 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   background-size: 200px 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* Arabic/Kurdish text support for older Android devices */
+[dir="rtl"] {
+  font-family: var(--font-family-arabic);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure proper text rendering for Kurdish/Arabic */
+[lang="ku"], [lang="ar"] {
+  font-family: var(--font-family-arabic);
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: bidi-override;
+}
+
+/* Fix text rendering issues on older Android devices */
+[dir="rtl"] * {
+  font-family: inherit;
+  text-rendering: optimizeLegibility;
+}
+
+/* Ensure proper line height for Arabic script */
+[dir="rtl"] p, [dir="rtl"] span, [dir="rtl"] div {
+  line-height: 1.6;
+  word-spacing: 0.1em;
+}
+
+/* Fix button text rendering */
+[dir="rtl"] button {
+  font-family: var(--font-family-arabic);
+  text-rendering: optimizeLegibility;
+}
+
+/* Fix input text rendering */
+[dir="rtl"] input, [dir="rtl"] textarea {
+  font-family: var(--font-family-arabic);
+  text-rendering: optimizeLegibility;
+  direction: rtl;
+  text-align: right;
 }
 
 /* PWA specific styles */

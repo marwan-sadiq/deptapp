@@ -777,9 +777,9 @@ function CustomersPage() {
          entity={editingCustomer}
          type="customer"
          isLoading={editCustomer.isPending}
-         error={editCustomer.error?.response?.data?.name?.[0] || 
-                editCustomer.error?.response?.data?.phone?.[0] || 
-                editCustomer.error?.response?.data?.detail || 
+         error={(editCustomer.error as any)?.response?.data?.name?.[0] || 
+                (editCustomer.error as any)?.response?.data?.phone?.[0] || 
+                (editCustomer.error as any)?.response?.data?.detail || 
                 editCustomer.error?.message}
        />
     </div>
@@ -1168,9 +1168,9 @@ function CompaniesPage() {
          entity={editingCompany}
          type="company"
          isLoading={editCompany.isPending}
-         error={editCompany.error?.response?.data?.name?.[0] || 
-                editCompany.error?.response?.data?.phone?.[0] || 
-                editCompany.error?.response?.data?.detail || 
+         error={(editCompany.error as any)?.response?.data?.name?.[0] || 
+                (editCompany.error as any)?.response?.data?.phone?.[0] || 
+                (editCompany.error as any)?.response?.data?.detail || 
                 editCompany.error?.message}
        />
     </div>
