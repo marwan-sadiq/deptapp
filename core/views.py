@@ -470,9 +470,20 @@ class PaymentScheduleViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Filter payment schedules by user - only show schedules for customers/companies owned by the current user
         user = self.request.user
-        return PaymentSchedule.objects.filter(
+        queryset = PaymentSchedule.objects.filter(
             models.Q(payment_plan__customer__user=user) | models.Q(payment_plan__company__user=user)
         ).order_by('scheduled_date')
+        
+        # Handle query parameters for filtering
+        customer_id = self.request.query_params.get('customer')
+        company_id = self.request.query_params.get('company')
+        
+        if customer_id:
+            queryset = queryset.filter(payment_plan__customer_id=customer_id)
+        if company_id:
+            queryset = queryset.filter(payment_plan__company_id=company_id)
+            
+        return queryset
 
 
 class DailyBalanceViewSet(viewsets.ModelViewSet):
