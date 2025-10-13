@@ -270,6 +270,12 @@ class DebtViewSet(viewsets.ModelViewSet):
             raise ValueError("Provide only one of customer or company")
         instance = serializer.save()
         
+        # Ensure total_debt is updated after debt creation
+        if customer:
+            customer.update_total_debt()
+        elif company:
+            company.update_total_debt()
+        
         # Create audit log for the debt
         AuditLog.objects.create(
             action="create",
@@ -300,6 +306,10 @@ class DebtViewSet(viewsets.ModelViewSet):
             )
 
     def perform_destroy(self, instance):
+        # Store references before deletion
+        customer = instance.customer
+        company = instance.company
+        
         # Create audit log for the debt
         AuditLog.objects.create(
             action="delete",
@@ -310,18 +320,18 @@ class DebtViewSet(viewsets.ModelViewSet):
         )
         
         # Create entity activity for the associated customer or company
-        if instance.customer:
+        if customer:
             EntityActivity.objects.create(
-                customer=instance.customer,
+                customer=customer,
                 activity_type='debt_deleted',
                 description=f"Debt deleted: {instance.note or 'No description'}",
                 amount=instance.amount,
                 related_object_type='debt',
                 related_object_id=instance.id,
             )
-        elif instance.company:
+        elif company:
             EntityActivity.objects.create(
-                company=instance.company,
+                company=company,
                 activity_type='debt_deleted',
                 description=f"Debt deleted: {instance.note or 'No description'}",
                 amount=instance.amount,
@@ -329,10 +339,21 @@ class DebtViewSet(viewsets.ModelViewSet):
                 related_object_id=instance.id,
             )
         
-        return super().perform_destroy(instance)
+        # Delete the debt first
+        super().perform_destroy(instance)
+        
+        # Update total_debt after deletion
+        if customer:
+            customer.update_total_debt()
+        elif company:
+            company.update_total_debt()
 
     def perform_update(self, serializer):
         instance = serializer.save()
+        
+        # The Debt.save() method will automatically update total_debt
+        # But we need to ensure it's called by saving the instance again
+        instance.save()
         
         # Create audit log for the debt update
         AuditLog.objects.create(

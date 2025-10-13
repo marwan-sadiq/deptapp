@@ -58,8 +58,8 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color, icon
   const colorScheme = colors[color as keyof typeof colors] || colors.blue
 
   return (
-    <div className={`${colorScheme.bg} ${colorScheme.border} border rounded-xl p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] animate-slide-up shadow-sm`}>
-      <div className="flex items-center gap-3 sm:gap-4">
+    <div className={`${colorScheme.bg} ${colorScheme.border} border rounded-xl p-3 xs:p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] animate-slide-up shadow-sm`}>
+      <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
         {icon && (
           <div className={`${colorScheme.icon} ${colorScheme.iconBg} flex-shrink-0 p-2 sm:p-3 rounded-xl shadow-sm`}>
             {icon}
@@ -69,7 +69,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color, icon
           <p className={`text-xs font-sans font-semibold ${colorScheme.text} uppercase tracking-wider mb-1 sm:mb-2`}>
             {title}
           </p>
-          <p className={`text-xl sm:text-2xl lg:text-3xl font-display font-bold ${colorScheme.value} mb-1 sm:mb-2`}>
+          <p className={`text-lg xs:text-xl sm:text-2xl lg:text-3xl font-display font-bold ${colorScheme.value} mb-1 sm:mb-2 break-words`}>
             {value}
           </p>
           {subtitle && (
