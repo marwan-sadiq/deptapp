@@ -1,6 +1,6 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import (UserLoginView, UserLogoutView, UserProfileView, check_auth_status,
+from .views import (UserLoginView, UserLogoutView, UserProfileView, check_auth_status, cors_test,
                           CustomerViewSet, CompanyViewSet, DebtViewSet, AuditLogViewSet,
                           PaymentPlanViewSet, PaymentScheduleViewSet, DailyBalanceViewSet,
                           ShopMoneyViewSet, EntityActivityViewSet, CurrencyViewSet, generate_payment_plan, get_payment_schedule, 
@@ -27,6 +27,9 @@ urlpatterns = [
     path('auth/logout/', UserLogoutView.as_view(), name='user-logout'),
     path('auth/profile/', UserProfileView.as_view(), name='user-profile'),
     path('auth/status/', check_auth_status, name='auth-status'),
+    
+    # CORS Test URL
+    path('cors-test/', cors_test, name='cors-test'),
     
     # API URLs
     path('', include(router.urls)),

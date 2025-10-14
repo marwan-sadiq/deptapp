@@ -50,9 +50,9 @@ INSTALLED_APPS = [
 # AUTH_USER_MODEL = 'core.User'
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # CORS middleware should be at the top
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -145,6 +145,16 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for now
 
+# CORS Methods - explicitly allow all necessary methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 # Additional CORS headers
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -156,6 +166,17 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+]
+
+# CORS Preflight settings
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+
+# Additional CORS settings for better compatibility
+CORS_ALLOW_PRIVATE_NETWORK = True
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-csrftoken',
+    'authorization',
 ]
 
 REST_FRAMEWORK = {
@@ -175,7 +196,16 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '1000/hour',  # Increased from 100/hour for development
         'user': '10000/hour'  # Increased from 1000/hour for development
-    }
+    },
+    # Add CORS-friendly settings
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ],
 }
 
 # Security Settings

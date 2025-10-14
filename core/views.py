@@ -154,6 +154,17 @@ def check_auth_status(request):
             'user': None
         })
 
+@api_view(['GET', 'POST', 'OPTIONS'])
+@permission_classes([AllowAny])
+def cors_test(request):
+    """Test endpoint for CORS debugging"""
+    return Response({
+        'message': 'CORS test successful',
+        'method': request.method,
+        'origin': request.META.get('HTTP_ORIGIN', 'No origin header'),
+        'headers': dict(request.META)
+    })
+
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()

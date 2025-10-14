@@ -48,6 +48,16 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+# CORS Methods - explicitly allow all necessary methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 # Additional CORS headers
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -59,6 +69,17 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+]
+
+# CORS Preflight settings
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+
+# Additional CORS settings for better compatibility
+CORS_ALLOW_PRIVATE_NETWORK = True
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-csrftoken',
+    'authorization',
 ]
 
 # Security settings for production
