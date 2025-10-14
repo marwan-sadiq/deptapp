@@ -485,6 +485,7 @@ class PaymentPlanViewSet(viewsets.ModelViewSet):
 
 
 class PaymentScheduleViewSet(viewsets.ModelViewSet):
+    queryset = PaymentSchedule.objects.all()
     serializer_class = PaymentScheduleSerializer
     permission_classes = [IsAuthenticated]
 
