@@ -6,9 +6,7 @@ from .settings import *
 
 # Override settings for PythonAnywhere
 DEBUG = False
-SECRET_KEY = os.environ.get("SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable must be set in production!")
+SECRET_KEY = os.environ.get("SECRET_KEY", "ke_4e&!hbn5$o#k#x04qg&w_c91pyn+u#*4!ekdo#-+)=sh!^!")
 
 # PythonAnywhere domain
 ALLOWED_HOSTS = [
