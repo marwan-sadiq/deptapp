@@ -27,7 +27,21 @@ function AppContent() {
   const currentPath = location.pathname.split('/')[1] || 'login'
   const { theme, toggleTheme } = useTheme()
   const { t, isRTL } = useLanguage()
-  const { user, logout, isAuthenticated } = useAuth()
+  const { user, logout, isAuthenticated, isLoading } = useAuth()
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900" dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+            Loading...
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   // If not authenticated, show only login
   if (!isAuthenticated) {

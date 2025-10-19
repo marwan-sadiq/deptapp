@@ -45,30 +45,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check if user is authenticated on app start
   useEffect(() => {
-    const storedToken = localStorage.getItem('auth_token')
-    if (storedToken) {
-      setToken(storedToken)
-      // Set token in API headers
-      api.defaults.headers.common['Authorization'] = `Token ${storedToken}`
-      // Verify token is still valid
-      checkAuthStatus()
-    } else {
-      setIsLoading(false)
+    const checkInitialAuth = async () => {
+      const storedToken = localStorage.getItem('auth_token')
+      if (storedToken) {
+        setToken(storedToken)
+        // Set token in API headers
+        api.defaults.headers.common['Authorization'] = `Token ${storedToken}`
+        // Verify token is still valid
+        await checkAuthStatus()
+      } else {
+        setIsLoading(false)
+      }
     }
+    
+    checkInitialAuth()
   }, [])
 
   const checkAuthStatus = async () => {
     try {
       const response = await api.get('auth/status/')
       setUser(response.data.user)
-      setIsLoading(false)
+      // Add a small delay to prevent blinking
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 100)
     } catch (error) {
       // Token is invalid, clear it
       localStorage.removeItem('auth_token')
       setToken(null)
       setUser(null)
       delete api.defaults.headers.common['Authorization']
-      setIsLoading(false)
+      // Add a small delay to prevent blinking
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 100)
     }
   }
 

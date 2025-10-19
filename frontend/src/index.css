@@ -156,3 +156,76 @@ body {
     -webkit-touch-callout: none;
   }
 }
+
+/* Language switching animation for Samsung devices */
+.language-changing {
+  transition: all 0.1s ease-in-out;
+}
+
+/* Force hardware acceleration for Samsung devices */
+[dir="rtl"], [dir="ltr"] {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Ensure proper text rendering on Samsung devices */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Samsung-specific fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  /* Fix for Samsung browsers */
+  input, textarea, select {
+    -webkit-appearance: none;
+    border-radius: 0;
+  }
+  
+  input[type="text"], input[type="password"], input[type="email"] {
+    -webkit-appearance: none;
+    border-radius: 8px;
+  }
+  
+  button {
+    -webkit-appearance: none;
+    border-radius: 8px;
+  }
+}
+
+/* Fix for Samsung Galaxy devices */
+@media screen and (max-width: 480px) {
+  /* Ensure buttons are large enough for touch */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve input field touch targets */
+  input, textarea, select {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Fix for Samsung keyboard issues */
+  input:focus, textarea:focus {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+}
+
+/* Fix for Samsung One UI */
+@media screen and (max-width: 768px) {
+  /* Ensure proper spacing on Samsung devices */
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  /* Fix viewport issues */
+  html {
+    height: -webkit-fill-available;
+  }
+}

@@ -38,8 +38,27 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   })
 
   const setLanguage = (lang: Language) => {
+    console.log('Setting language to:', lang)
     setLanguageState(lang)
     localStorage.setItem('shop-app-language', lang)
+    
+    // Force a re-render by updating document attributes immediately
+    const isRTL = lang === 'ku' || lang === 'ar'
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr'
+    document.documentElement.lang = lang
+    
+    // Force a DOM update for Samsung devices
+    if (typeof window !== 'undefined') {
+      // Trigger a custom event that components can listen to
+      window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lang, isRTL } }))
+      
+      // Force a re-render by updating the document title briefly
+      const originalTitle = document.title
+      document.title = lang
+      setTimeout(() => {
+        document.title = originalTitle
+      }, 10)
+    }
   }
 
   const isRTL = language === 'ku' || language === 'ar'
@@ -360,8 +379,21 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
 
   // Set document direction based on language
   useEffect(() => {
+    console.log('Language effect triggered:', { language, isRTL })
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr'
     document.documentElement.lang = language
+    
+    // Force a style recalculation for Samsung devices
+    if (typeof window !== 'undefined') {
+      // Force a reflow to ensure changes are applied
+      document.body.offsetHeight
+      
+      // Add a class to trigger any CSS transitions
+      document.documentElement.classList.add('language-changing')
+      setTimeout(() => {
+        document.documentElement.classList.remove('language-changing')
+      }, 100)
+    }
   }, [language, isRTL])
 
   const value: LanguageContextType = {
